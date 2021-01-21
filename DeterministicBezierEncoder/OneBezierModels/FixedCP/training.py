@@ -18,7 +18,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     print("Experiment #{} ---> batch_size={} num_epochs={} learning_rate={}".format(
         num_experiment,  batch_size, num_epochs, lr))
 
-    # basedir = "/data1slow/users/asuso/transformer_bezier"
+    # basedir = "/data1slow/users/asuso/trans_bezier"
     basedir = "/home/albert/PycharmProjects/trans_bezier"
 
     probabilitic_map_generator = ProbabilisticMap((model.image_size, model.image_size, 50))
