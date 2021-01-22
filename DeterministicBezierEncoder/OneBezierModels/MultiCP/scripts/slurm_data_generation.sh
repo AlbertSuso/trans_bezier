@@ -3,16 +3,16 @@
 # all commands that start with SBATCH contain commands that are just used by SLURM for scheduling
 #################
 # set a job name
-#SBATCH --job-name=transformer_bezier
+#SBATCH --job-name=dataset_generation
 #################
 # working directory
 #SBATCH -D /home/asuso/trans_bezier
 ##############
 # a file for job output, you can check job progress
-#SBATCH --output=./DeterministicBezierEncoder/OneBezierModels/FixedCP/transformer_bezier.out
+#SBATCH --output=./DeterministicBezierEncoder/OneBezierModels/MultiCP/dataset_generation.out
 #################
 # a file for errors from the job
-#SBATCH --error=./DeterministicBezierEncoder/OneBezierModels/FixedCP/transformer_bezier.err
+#SBATCH --error=./DeterministicBezierEncoder/OneBezierModels/MultiCP/dataset_generation.err
 #################
 # time you think you need
 # In this case, hh:mm:ss, select whatever time you want, the less you ask for the # faster your job will run.
@@ -37,19 +37,19 @@
 
 #################
 # Input variable indicating the experiment to run
-set -- $1
+# set -- $1
 
 #################
 # Load specific experiment variable
-. DeterministicBezierEncoder/OneBezierModels/FixedCP/scripts/experiments.sh
+# . scripts/experiments.sh
 
 #################
 # Prepare the experiment to run
-CODE="python -u main.py --num_experiment $1 --new_model $new_model --num_transformer_layers $num_transformer_layers --num_control_points $num_control_points --transformer_encoder $trans_encoder --batch_size $batch_size --num_epochs $num_epochs --learning_rate $learning_rate"
+CODE="python -u DeterministicBezierEncoder/OneBezierModels/MultiCP/dataset_generation.py"
 
 #################
 # Prepare the experiment to run
-echo "Experiment number: $1"
+# echo "Experiment number: $1"
 echo $CODE
 
 #################

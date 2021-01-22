@@ -9,10 +9,10 @@
 #SBATCH -D /home/asuso/trans_bezier
 ##############
 # a file for job output, you can check job progress
-#SBATCH --output=./DeterministicBezierEncoder/OneBezierModels/FixedCP/transformer_bezier.out
+#SBATCH --output=./DeterministicBezierEncoder/OneBezierModels/MultiCP/transformer_bezier.out
 #################
 # a file for errors from the job
-#SBATCH --error=./DeterministicBezierEncoder/OneBezierModels/FixedCP/transformer_bezier.err
+#SBATCH --error=./DeterministicBezierEncoder/OneBezierModels/MultiCP/transformer_bezier.err
 #################
 # time you think you need
 # In this case, hh:mm:ss, select whatever time you want, the less you ask for the # faster your job will run.
@@ -41,7 +41,7 @@ set -- $1
 
 #################
 # Load specific experiment variable
-. DeterministicBezierEncoder/OneBezierModels/FixedCP/scripts/experiments.sh
+. DeterministicBezierEncoder/OneBezierModels/MultiCP/scripts/experiments.sh
 
 #################
 # Prepare the experiment to run

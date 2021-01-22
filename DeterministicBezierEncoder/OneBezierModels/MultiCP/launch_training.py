@@ -3,8 +3,8 @@ import os
 import torch
 
 from torch.optim import Adam
-from DeterministicBezierEncoder.OneBezierModels.MultiCP.transformer import Transformer
-from DeterministicBezierEncoder.OneBezierModels.MultiCP.training import train_one_bezier_transformer
+from DeterministicBezierEncoder.OneBezierModels.FixedCP.transformer import Transformer
+from DeterministicBezierEncoder.OneBezierModels.FixedCP.training import train_one_bezier_transformer
 from Utils.feature_extractor import ResNet18
 
 
@@ -46,16 +46,17 @@ learning_rate = args.learning_rate if args.learning_rate is not None else 0.0000
 state_dicts_path = args.state_dicts
 
 """LOADING DATASET"""
-images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/fixedCP"+str(num_control_points)))
-sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/fixedCP"+str(num_control_points)))
-dataset = (images, sequences)
+images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/multiCP"+str(num_control_points)))
+sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/multiCP"+str(num_control_points)))
+tgt_padding_masks = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/padding_masks/multiCP"+str(num_control_points)))
+dataset = (images, sequences, tgt_padding_masks)
 
 """INSTANTIATION OF THE MODEL"""
 image_size = 64
 model = Transformer(image_size, feature_extractor=ResNet18, num_transformer_layers=num_transformer_layers,
                     num_cp=num_control_points, transformer_encoder=transformer_encoder)
 if not new_model:
-    model.load_state_dict(torch.load(state_dict_basedir+"/state_dicts/DeterministicBezierEncoder/OneBezierModels/fixedCP/"+str(model.num_cp)+"CP_exp"+str(num_experiment)))
+    model.load_state_dict(torch.load(state_dict_basedir+"/state_dicts/DeterministicBezierEncoder/OneBezierModels/multiCP/"+str(model.num_cp)+"CP_exp"+str(num_experiment)))
 
 """SELECT OPTIMIZATOR AND RUN TRAINING"""
 optimizer = Adam

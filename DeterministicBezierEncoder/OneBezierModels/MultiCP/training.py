@@ -27,7 +27,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     for i in range(batch_size):
         cp_covariances[:, i, :, :] = cp_covariance
     if cuda:
-        probabilistic_map_generator = probabilistic_map_generator.cuda()
+        probabilitic_map_generator = probabilistic_map_generator.cuda()
         cp_covariances = cp_covariances.cuda()
 
     # Iniciamos una variable en la que guardaremos la mejor loss obtenida en validation
@@ -38,15 +38,16 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir+"/graphics/DeterministicBezierEncoder/OneBezierModels/FixedCP/"+str(model.num_cp)+"CP_exp"+str(num_experiment))
+        writer = SummaryWriter(basedir+"/graphics/DeterministicBezierEncoder/OneBezierModels/MultiCP/"+str(model.num_cp)+"CP_exp"+str(num_experiment))
         counter = 0
 
     # Separamos el dataset en imagenes y secuencias
-    images, sequences = dataset
+    images, sequences, tgt_padding_masks = dataset
     # Enviamos los datos y el modelo a la GPU
     if cuda:
         images = images.cuda()
         sequences = sequences.cuda()
+        tgt_padding_masks = tgt_padding_masks.cuda()
         model = model.cuda()
 
     # Particionamos el dataset en training y validation
@@ -56,6 +57,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     im_validation = images[40000:]
     seq_training = sequences[:, :40000]
     seq_validation = sequences[:, 40000:]
+    tgt_padding_masks_training = tgt_padding_masks[:, 40000]
+    tgt_padding_masks_validation = tgt_padding_masks[:, 40000:]
 
     # Definimos el optimizer
     optimizer = optimizer(model.parameters(), lr=lr)
@@ -67,20 +70,21 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Obtenemos el batch
             im = im_training[i:i+batch_size]
             seq = seq_training[:, i:i+batch_size]
+            tgt_padding_masks = tgt_padding_masks_training[:, i:i+batch_size]
 
             # Ejecutamos el modelo sobre el batch
-            probabilities = model(im, seq)
+            probabilities = model(im, seq, tgt_padding_masks)
 
             #probabilities.shape = (tgt_seq_len, batch_size, num_probabilites)
             #seq.shape = (tgt_seq_len, batch_size, 1)
             # Calculamos la loss
             loss = 0
             for k in range(batch_size):
-                loss_1 = F.cross_entropy(probabilities[:, k], seq[:, k])
-                seq_inver = torch.empty_like(seq[:, k])
-                seq_inver[:-1] = seq[:-1, k].flip(0)
-                seq_inver[-1] = seq[-1, k]
-                loss_2 = F.cross_entropy(probabilities[:, k], seq_inver)
+                num_tokens = len(tgt_padding_masks) - torch.sum(tgt_padding_masks[:, k])
+                actual_seq = seq[:num_tokens, k]
+                loss_1 = F.cross_entropy(probabilities[:, k], actual_seq)
+                actual_seq[:-1] = actual_seq[:-1].flip(0)
+                loss_2 = F.cross_entropy(probabilities[:, k], actual_seq)
                 if loss_1 < loss_2:
                     loss += loss_1
                 else:
@@ -116,19 +120,21 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             for j in range(0, len(im_validation)-batch_size+1, batch_size):
                 im = im_validation[j:j + batch_size]
                 seq = seq_validation[:, j:j + batch_size]
+                tgt_padding_masks = tgt_padding_masks_validation[:, j:j + batch_size]
 
                 # Ejecutamos el modelo sobre el batch
-                probabilities = model(im, seq)
+                probabilities = model(im, seq, tgt_padding_masks)
 
-                # probabilies.shape = (tgt_seq_len, batch_size, num_probabilites)
+                # probabilities.shape = (tgt_seq_len, batch_size, num_probabilites)
                 # seq.shape = (tgt_seq_len, batch_size, 1)
+                # Calculamos la loss
                 loss = 0
                 for k in range(batch_size):
-                    loss_1 = F.cross_entropy(probabilities[:, k], seq[:, k])
-                    seq_inver = torch.empty_like(seq[:, k])
-                    seq_inver[:-1] = seq[:-1, k].flip(0)
-                    seq_inver[-1] = seq[-1, k]
-                    loss_2 = F.cross_entropy(probabilities[:, k], seq_inver)
+                    num_tokens = len(tgt_padding_masks) - torch.sum(tgt_padding_masks[:, k])
+                    actual_seq = seq[:num_tokens, k]
+                    loss_1 = F.cross_entropy(probabilities[:, k], actual_seq)
+                    actual_seq[:-1] = actual_seq[:-1].flip(0)
+                    loss_2 = F.cross_entropy(probabilities[:, k], actual_seq)
                     if loss_1 < loss_2:
                         loss += loss_1
                     else:
@@ -148,7 +154,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/DeterministicBezierEncoder/OneBezierModels/FixedCP/"+str(model.num_cp)+"CP_exp"+str(num_experiment))
+                torch.save(model.state_dict(), basedir+"/state_dicts/DeterministicBezierEncoder/OneBezierModels/MultiCP/"+str(model.num_cp)+"CP_exp"+str(num_experiment))
             cummulative_loss = 0
 
             # Iniciamos la evaluación del modo "predicción"
