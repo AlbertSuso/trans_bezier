@@ -164,7 +164,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
                 control_points = model.predict(tgt_im)
                 resolution = 150
-                for j, t in enumerate(torch.linspace(0, 1, resolution)):
+                for t in torch.linspace(0, 1, resolution):
                     output = bezier(control_points, t)
                     output = torch.round(output).long()
                     pred_im[0, 0, output[0], output[1]] = 1
@@ -172,10 +172,11 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 iou_value += intersection_over_union(pred_im, tgt_im)
                 chamfer_value += chamfer_distance(pred_im[0].cpu().numpy(), tgt_im[0].cpu().numpy())
 
-                probability_map = probabilitic_map_generator(control_points.unsqueeze(1), cp_covariances)
-                reduced_map, _ = torch.max(probability_map, dim=3)
-                reduced_map = reduced_map / torch.max(reduced_map)
-                probabilistic_similarity += torch.sum(reduced_map*tgt_im)
+                if control_points.shape[0] > 0:
+                    probability_map = probabilitic_map_generator(control_points.unsqueeze(1), cp_covariances)
+                    reduced_map, _ = torch.max(probability_map, dim=3)
+                    reduced_map = reduced_map / torch.max(reduced_map)
+                    probabilistic_similarity += torch.sum(reduced_map*tgt_im)
 
                 target_images[idx//20] = tgt_im.unsqueeze(0)
                 predicted_images[idx // 20] = pred_im.unsqueeze(0)
@@ -201,10 +202,11 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 iou_value += intersection_over_union(pred_im, tgt_im)
                 chamfer_value += chamfer_distance(pred_im[0].cpu().numpy(), tgt_im[0].cpu().numpy())
 
-                probability_map = probabilitic_map_generator(control_points.unsqueeze(1), cp_covariances)
-                reduced_map, _ = torch.max(probability_map, dim=3)
-                reduced_map = reduced_map / torch.max(reduced_map)
-                probabilistic_similarity += torch.sum(reduced_map * tgt_im)
+                if control_points.shape[0] > 0:
+                    probability_map = probabilitic_map_generator(control_points.unsqueeze(1), cp_covariances)
+                    reduced_map, _ = torch.max(probability_map, dim=3)
+                    reduced_map = reduced_map / torch.max(reduced_map)
+                    probabilistic_similarity += torch.sum(reduced_map * tgt_im)
 
             # Guardamos el error de predicción en tensorboard
             writer.add_scalar("Prediction/IoU", iou_value/500, counter)

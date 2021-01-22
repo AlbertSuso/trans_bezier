@@ -4,25 +4,25 @@
 case $1 in
 	0)
 		batch_size="64"
-		num_epochs="100"
+		num_epochs="500"
 		learning_rate="0.00005"
-		num_control_points="3"
-		num_transformer_layers="4"
+		num_control_points="6"
+		num_transformer_layers="8"
 		trans_encoder="True"
 		;;
 	1)
 		batch_size="64"
-		num_epochs="150"
+		num_epochs="500"
 		learning_rate="0.00005"
-		num_control_points="4"
-		num_transformer_layers="6"
+		num_control_points="7"
+		num_transformer_layers="8"
 		trans_encoder="True"
 		;;
 	2)
 		batch_size="64"
-		num_epochs="200"
+		num_epochs="500"
 		learning_rate="0.00005"
-		num_control_points="5"
+		num_control_points="8"
 		num_transformer_layers="8"
 		trans_encoder="True"
 		;;
