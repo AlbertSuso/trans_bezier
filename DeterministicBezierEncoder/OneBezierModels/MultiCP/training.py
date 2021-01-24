@@ -57,7 +57,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     im_validation = images[40000:]
     seq_training = sequences[:, :40000]
     seq_validation = sequences[:, 40000:]
-    tgt_padding_masks_training = tgt_padding_masks[:, 40000]
+    tgt_padding_masks_training = tgt_padding_masks[:, :40000]
     tgt_padding_masks_validation = tgt_padding_masks[:, 40000:]
 
     # Definimos el optimizer

@@ -39,7 +39,7 @@ def bezier(CP, t, device='cuda'):
 def generate1bezier(im_size=64, batch_size=64, max_control_points=3, resolution=150, device='cuda'):
     images = torch.zeros((batch_size, 1, im_size, im_size), dtype=torch.float32, device=device)
     tgt_seq = torch.ones((max_control_points+1, batch_size), dtype=torch.long, device=device)
-    tgt_padding_mask = torch.ones((max_control_points+1, batch_size), dtype=torch.long, device=device).bool()
+    tgt_padding_mask = torch.ones((batch_size, max_control_points+1), dtype=torch.long, device=device).bool()
 
     # El ultimo token de todas las secuencias será el que indica que debemos parar
     tgt_seq *= im_size*im_size
@@ -49,15 +49,15 @@ def generate1bezier(im_size=64, batch_size=64, max_control_points=3, resolution=
 
     for i, CP in enumerate(control_points):
         # Escogemos aleatoriamente el numero de puntos de control que tendra esta curva.
-        num_cp = torch.randint(2, max_control_points+1, (1,))
+        num_cp = torch.randint(3, max_control_points+1, (1,))
 
         # Generamos la tgt_seq y la tgt_padding_mask correspondiente a los puntos de control CP
         rounded_CP = torch.round(CP)[:num_cp]
         for k, P in enumerate(rounded_CP):
             tgt_seq[k, i] = P[0]*im_size + P[1]
-            tgt_padding_mask[k, i] = False
+            tgt_padding_mask[i, k] = False
         # Marcamos una ultima posicion como no padding (pues el token de inicio de secuencia no es padding)
-        tgt_padding_mask[k+1, i] = False
+        tgt_padding_mask[i, k+1] = False
 
         # Generamos la imagen correspondiente a los puntos de control CP
         for j, t in enumerate(torch.linspace(0, 1, resolution)):
