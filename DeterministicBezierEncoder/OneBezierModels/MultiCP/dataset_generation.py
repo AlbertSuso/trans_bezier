@@ -49,7 +49,7 @@ def generate1bezier(im_size=64, batch_size=64, max_control_points=3, resolution=
 
     for i, CP in enumerate(control_points):
         # Escogemos aleatoriamente el numero de puntos de control que tendra esta curva.
-        num_cp = torch.randint(3, max_control_points+1, (1,))
+        num_cp = torch.randint(2, max_control_points+1, (1,))
 
         # Generamos la tgt_seq y la tgt_padding_mask correspondiente a los puntos de control CP
         rounded_CP = torch.round(CP)[:num_cp]

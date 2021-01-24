@@ -57,8 +57,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     im_validation = images[40000:]
     seq_training = sequences[:, :40000]
     seq_validation = sequences[:, 40000:]
-    tgt_padding_masks_training = tgt_padding_masks[:, :40000]
-    tgt_padding_masks_validation = tgt_padding_masks[:, 40000:]
+    tgt_padding_masks_training = tgt_padding_masks[:40000]
+    tgt_padding_masks_validation = tgt_padding_masks[40000:]
 
     # Definimos el optimizer
     optimizer = optimizer(model.parameters(), lr=lr)
@@ -70,7 +70,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Obtenemos el batch
             im = im_training[i:i+batch_size]
             seq = seq_training[:, i:i+batch_size]
-            tgt_padding_masks = tgt_padding_masks_training[:, i:i+batch_size]
+            tgt_padding_masks = tgt_padding_masks_training[i:i+batch_size]
 
             # Ejecutamos el modelo sobre el batch
             probabilities = model(im, seq, tgt_padding_masks)
@@ -80,11 +80,12 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Calculamos la loss
             loss = 0
             for k in range(batch_size):
-                num_tokens = len(tgt_padding_masks) - torch.sum(tgt_padding_masks[:, k])
-                actual_seq = seq[:num_tokens, k]
-                loss_1 = F.cross_entropy(probabilities[:, k], actual_seq)
-                actual_seq[:-1] = actual_seq[:-1].flip(0)
-                loss_2 = F.cross_entropy(probabilities[:, k], actual_seq)
+                num_tokens = tgt_padding_masks.shape[1] - torch.sum(tgt_padding_masks[k])
+                loss_1 = F.cross_entropy(probabilities[:num_tokens, k], seq[:num_tokens, k])
+                inv_seq = torch.empty_like(seq[:num_tokens, k])
+                inv_seq[:-1] = seq[:num_tokens-1, k].flip(0)
+                inv_seq[-1] = seq[num_tokens-1, k]
+                loss_2 = F.cross_entropy(probabilities[:num_tokens, k], inv_seq)
                 if loss_1 < loss_2:
                     loss += loss_1
                 else:
@@ -120,7 +121,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             for j in range(0, len(im_validation)-batch_size+1, batch_size):
                 im = im_validation[j:j + batch_size]
                 seq = seq_validation[:, j:j + batch_size]
-                tgt_padding_masks = tgt_padding_masks_validation[:, j:j + batch_size]
+                tgt_padding_masks = tgt_padding_masks_validation[j:j + batch_size]
 
                 # Ejecutamos el modelo sobre el batch
                 probabilities = model(im, seq, tgt_padding_masks)
@@ -130,11 +131,11 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 # Calculamos la loss
                 loss = 0
                 for k in range(batch_size):
-                    num_tokens = len(tgt_padding_masks) - torch.sum(tgt_padding_masks[:, k])
+                    num_tokens = tgt_padding_masks.shape[1] - torch.sum(tgt_padding_masks[k])
                     actual_seq = seq[:num_tokens, k]
-                    loss_1 = F.cross_entropy(probabilities[:, k], actual_seq)
+                    loss_1 = F.cross_entropy(probabilities[:num_tokens, k], actual_seq)
                     actual_seq[:-1] = actual_seq[:-1].flip(0)
-                    loss_2 = F.cross_entropy(probabilities[:, k], actual_seq)
+                    loss_2 = F.cross_entropy(probabilities[:num_tokens, k], actual_seq)
                     if loss_1 < loss_2:
                         loss += loss_1
                     else:

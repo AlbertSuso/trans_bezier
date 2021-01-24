@@ -37,7 +37,7 @@ num_experiment = args.num_experiment if args.num_experiment is not None else 0
 new_model = args.new_model if args.new_model is not None else True
 
 transformer_encoder = args.transformer_encoder if args.transformer_encoder is not None else True
-num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 4
+num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 6
 num_control_points = args.num_control_points if args.num_control_points is not None else 3
 
 batch_size = args.batch_size if args.batch_size is not None else 64
@@ -46,9 +46,9 @@ learning_rate = args.learning_rate if args.learning_rate is not None else 0.0000
 state_dicts_path = args.state_dicts
 
 """LOADING DATASET"""
-images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/exact_multiCP"+str(num_control_points)))
-sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/exact_multiCP"+str(num_control_points)))
-tgt_padding_masks = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/padding_masks/exact_multiCP"+str(num_control_points)))
+images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/multiCP"+str(num_control_points)))
+sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/multiCP"+str(num_control_points)))
+tgt_padding_masks = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/padding_masks/multiCP"+str(num_control_points)))
 dataset = (images, sequences, tgt_padding_masks)
 
 """INSTANTIATION OF THE MODEL"""

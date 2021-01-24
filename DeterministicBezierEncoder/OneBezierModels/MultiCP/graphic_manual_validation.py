@@ -2,29 +2,32 @@ import torch
 import os
 import matplotlib.pyplot as plt
 
-from DeterministicBezierEncoder.OneBezierModels.FixedCP.transformer import Transformer
+from DeterministicBezierEncoder.OneBezierModels.MultiCP.transformer import Transformer
 from Utils.feature_extractor import ResNet18
-from DeterministicBezierEncoder.OneBezierModels.FixedCP.dataset_generation import bezier
+from DeterministicBezierEncoder.OneBezierModels.MultiCP.dataset_generation import bezier
 from Utils.chamfer_distance import chamfer_distance
 
 
 basedir = "/home/albert/PycharmProjects/trans_bezier"
 image_size = 64
-num_cp = 3
+num_cp = 4
 
 
-model = Transformer(image_size, feature_extractor=ResNet18, num_transformer_layers=6, transformer_encoder=True).cuda()
-model.load_state_dict(torch.load(basedir+"/state_dicts/DeterministicBezierEncoder/OneBezierModels/FixedCP/"+str(num_cp)+"CP_exp0"))
+model = Transformer(image_size, feature_extractor=ResNet18, num_transformer_layers=6, num_cp=num_cp, transformer_encoder=True).cuda()
+model.load_state_dict(torch.load(basedir+"/state_dicts/DeterministicBezierEncoder/OneBezierModels/MultiCP/"+str(num_cp)+"CP_exp0"))
 model.eval()
 
-images = torch.load(os.path.join(basedir, "Datasets/OneBezierDatasets/Training/images/fixedCP"+str(num_cp)))
-sequences = torch.load(os.path.join(basedir, "Datasets/OneBezierDatasets/Training/sequences/fixedCP"+str(num_cp)))
+images = torch.load(os.path.join(basedir, "Datasets/OneBezierDatasets/Training/images/exact_multiCP"+str(num_cp)))
+sequences = torch.load(os.path.join(basedir, "Datasets/OneBezierDatasets/Training/sequences/exact_multiCP"+str(num_cp)))
+tgt_padding_masks = torch.load(os.path.join(basedir, "Datasets/OneBezierDatasets/Training/padding_masks/exact_multiCP"+str(num_cp)))
 
-idx = 157
+idx = 40156
 tgt_im = images[idx].unsqueeze(0).cuda()
-tgt_seq = sequences[:-1, idx].cuda()
+num_tgt_cp = len(tgt_padding_masks[idx]) - torch.sum(tgt_padding_masks[idx])
+print("Tenemos", num_tgt_cp, "puntos de control")
+tgt_seq = sequences[:num_tgt_cp-1, idx].cuda()
 
-tgt_control_points = torch.empty_like(tgt_seq)
+tgt_control_points = torch.empty((tgt_seq.shape[0], 2))
 
 for i, cp in enumerate(tgt_seq):
     tgt_control_points[i, 0] = cp // image_size

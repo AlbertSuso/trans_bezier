@@ -13,7 +13,7 @@ image_size = 64
 num_cp = 3
 
 
-model = Transformer(image_size, feature_extractor=ResNet18, num_transformer_layers=6, transformer_encoder=True).cuda()
+model = Transformer(image_size, feature_extractor=ResNet18, num_transformer_layers=4, num_cp=num_cp, transformer_encoder=True).cuda()
 model.load_state_dict(torch.load(basedir+"/state_dicts/DeterministicBezierEncoder/OneBezierModels/FixedCP/"+str(num_cp)+"CP_exp0"))
 model.eval()
 
@@ -24,7 +24,7 @@ idx = 157
 tgt_im = images[idx].unsqueeze(0).cuda()
 tgt_seq = sequences[:-1, idx].cuda()
 
-tgt_control_points = torch.empty_like(tgt_seq)
+tgt_control_points = torch.empty((tgt_seq.shape[0], 2))
 
 for i, cp in enumerate(tgt_seq):
     tgt_control_points[i, 0] = cp // image_size
