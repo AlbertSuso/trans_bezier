@@ -1,7 +1,7 @@
 import os
 import time
-
 import torch
+
 from scipy.special import binom
 from torch.utils.data import Dataset
 
@@ -20,21 +20,27 @@ class OneBezierDataset(Dataset):
         return self._images[idx], self._sequences[idx]
 
 
-def bezier(CP, t, device='cuda'):
+def bezier(CP, num_cps, t, device='cuda'):
     """
-    :param CP: iterable of 2-size tensors of dim=1 (points in R^2)
-    :param t: float in (0, 1)
-    :return: 2-size tensor of dim=1 (point in R^2) corresponding to de evaluation  in t of the bezier curve
-             with control points PC.
-    """
-    n = len(CP) - 1
-    output = torch.tensor([0, 0], dtype=torch.float32, device=device)
+    CP.shape = (max_num_cp, batch_size, 2)
+    num_cp.shape = (batch_size)
+    t.shape=(1, resolution)
 
-    t_inv = (1-t)
+    Returns tensor of shape=(batch_size, resolution, 2) containing the "resolution" points belonging to the "batch_size" bezier curves evaluated in "t".
+    """
+    # Calculation of all the binomial coefficients needed for the computation of bezier curves
+    binomial_coefs = torch.zeros_like(CP[:, :, 0])
+    for i, num_cp in enumerate(num_cps):
+        binomial_coefs[:num_cp, i] = binom((num_cp-1).cpu(), [k for k in range(num_cp)])
+
+    output = torch.zeros((num_cps.shape[0], t.shape[1], 2), dtype=torch.float32, device=device)
+    t_inv = 1-t
+
     for i, P in enumerate(CP):
-        output = output + binom(n, i) * t**i * t_inv**(n-i) * P
-
-    return output
+        pot = (num_cps-1-i).unsqueeze(1)
+        pot[pot < 0] = 0
+        output = output + (binomial_coefs[i].unsqueeze(1) * t**i * t_inv**pot).unsqueeze(-1) * P.unsqueeze(1)
+    return torch.round(output).long()
 
 def generate1bezier(im_size=64, batch_size=64, max_control_points=3, resolution=150, device='cuda'):
     images = torch.zeros((batch_size, 1, im_size, im_size), dtype=torch.float32, device=device)
@@ -45,27 +51,23 @@ def generate1bezier(im_size=64, batch_size=64, max_control_points=3, resolution=
     tgt_seq *= im_size*im_size
 
     # Generamos aleatoriamente los control points de las curvas del dataset
-    control_points = (im_size-0.5)*torch.rand((batch_size, max_control_points, 2), device=device)
+    control_points = (im_size-0.5)*torch.rand((max_control_points, batch_size, 2), device=device)
+    # Escogemos aleatoriamente cuantos puntos de control tendra cada curva
+    num_cps = torch.randint(2, max_control_points + 1, (batch_size,), dtype=torch.long, device=device)
 
-    for i, CP in enumerate(control_points):
-        # Escogemos aleatoriamente el numero de puntos de control que tendra esta curva.
-        num_cp = torch.randint(2, max_control_points+1, (1,))
+    # Generamos la tgt_seq y la tgt_padding_mask
+    rounded_cp = torch.round(control_points)
+    for i, num_cp in enumerate(num_cps):
+        tgt_seq[:num_cp, i] = im_size * rounded_cp[:num_cp, i, 0] + rounded_cp[:num_cp, i, 1]
+        tgt_padding_mask[i, :num_cp+1] = False
 
-        # Generamos la tgt_seq y la tgt_padding_mask correspondiente a los puntos de control CP
-        rounded_CP = torch.round(CP)[:num_cp]
-        for k, P in enumerate(rounded_CP):
-            tgt_seq[k, i] = P[0]*im_size + P[1]
-            tgt_padding_mask[i, k] = False
-        # Marcamos una ultima posicion como no padding (pues el token de inicio de secuencia no es padding)
-        tgt_padding_mask[i, k+1] = False
+    output = bezier(control_points, num_cps, torch.linspace(0, 1, resolution, device=device).unsqueeze(0), device=device)
 
-        # Generamos la imagen correspondiente a los puntos de control CP
-        for j, t in enumerate(torch.linspace(0, 1, resolution)):
-            output = bezier(CP[:num_cp], t, device=device)
-            output = torch.round(output).long()
-            images[i, 0, output[0], output[1]] = 1
+    for i in range(batch_size):
+        images[i, 0, output[i, :, 0], output[i, :, 1]] = 1
 
     return images, tgt_seq, tgt_padding_mask
+
 
 
 if __name__ == '__main__':
@@ -73,7 +75,7 @@ if __name__ == '__main__':
     basedir = "/home/albert/PycharmProjects/trans_bezier"
 
     t0 = time.time()
-    for num_cp in [3, 4, 5, 6, 7, 8]:
+    for num_cp in [4]:
         im, seq, tgt_padding_mask = generate1bezier(batch_size=50000, max_control_points=num_cp, device='cuda')
         im = im.to('cpu')
         seq = seq.to('cpu')
