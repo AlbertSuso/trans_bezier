@@ -2,9 +2,9 @@ import torch
 import os
 import matplotlib.pyplot as plt
 
-from DeterministicBezierEncoder.OneBezierModels.FixedCP.transformer import Transformer
+from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.transformer import Transformer
 from Utils.feature_extractor import ResNet18
-from DeterministicBezierEncoder.OneBezierModels.FixedCP.dataset_generation import bezier
+from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.dataset_generation import bezier
 from Utils.chamfer_distance import chamfer_distance
 
 
@@ -14,11 +14,10 @@ num_cp = 3
 
 
 model = Transformer(image_size, feature_extractor=ResNet18, num_transformer_layers=4, num_cp=num_cp, transformer_encoder=True).cuda()
-model.load_state_dict(torch.load(basedir+"/state_dicts/DeterministicBezierEncoder/OneBezierModels/FixedCP/"+str(num_cp)+"CP_exp0"))
-model.eval()
+model.load_state_dict(torch.load(basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/"+str(num_cp)+"CP_exp0"))
 
-images = torch.load(os.path.join(basedir, "Datasets/OneBezierDatasets/Training/images/provaCP"+str(num_cp)))
-sequences = torch.load(os.path.join(basedir, "Datasets/OneBezierDatasets/Training/sequences/provaCP"+str(num_cp)))
+images = torch.load(os.path.join(basedir, "Datasets/OneBezierDatasets/Training/images/fixedCP"+str(num_cp)))
+sequences = torch.load(os.path.join(basedir, "Datasets/OneBezierDatasets/Training/sequences/fixedCP"+str(num_cp)))
 
 idx = 157
 tgt_im = images[idx].unsqueeze(0).cuda()

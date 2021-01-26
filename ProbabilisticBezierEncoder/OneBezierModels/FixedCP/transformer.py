@@ -5,6 +5,22 @@ from Utils.feature_extractor import ResNet18
 from Utils.positional_encoder import PositionalEncoder
 
 
+class Embedder(nn.Module):
+    def __init__(self, d_model):
+        super().__init__()
+        # Embedding for the BOS (begin of sequence)
+        self._bos_embedder = nn.Embedding(1, d_model)
+        # Embedding for the control points
+        self._cp_embedder = nn.Linear(2, d_model)
+
+
+    def forward(self, tgt_seq, bos_idx):
+        bos_cod = self._bos_embedder(torch.zeros(1, dtype=torch.long, device=tgt_seq.device))
+        out = self._cp_embedder(tgt_seq)
+        out[bos_idx] = bos_cod
+        return out
+
+
 class TransformerEncoder(nn.Module):
     def __init__(self, feature_extractor, num_layers=6):
         super().__init__()
@@ -25,13 +41,16 @@ class TransformerEncoder(nn.Module):
         return self._encoder(features)
         #return.shape = (seq_len, batch_size, d_model)
 
+
 class TransformerDecoder(nn.Module):
-    def __init__(self, d_model, image_size, num_layers=6):
+    def __init__(self, d_model, num_layers=6):
         super().__init__()
         self.d_model = d_model
 
-        # la dimensió input es una per cada possible punt de control + 1 per inici de seq
-        self._embedder = nn.Embedding(1+image_size*image_size, d_model)
+        # Instanciamos el embedder
+        self._embedder = Embedder(d_model)
+
+        # Positional Encoder
         self._positional_encoder = PositionalEncoder(d_model)
 
         # decoder_layer with d_model, nhead, dim_feedforward (implementado tal cual en el paper)
@@ -39,29 +58,21 @@ class TransformerDecoder(nn.Module):
         self._decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
 
 
-    def _generate_tgt_mask(self, tgt_seq_len, type=1, cuda=True):
-        mask = None
+    def _generate_tgt_mask(self, tgt_seq_len, cuda=True):
         device = 'cuda' if cuda else 'cpu'
         # La primera fila se enmascara totalmente, y la última posición de la última fila también se enmascara
-        if type == 0:
-            mask = torch.triu(torch.ones((tgt_seq_len, tgt_seq_len), device=device))
-            mask = mask.float().masked_fill(mask == 1, float('-inf'))
-        # La primera posición de la primera fila no se enmascara, y la última posición de la última fila tampoco
-        elif type == 1:
-            mask = torch.triu(torch.ones((tgt_seq_len, tgt_seq_len), device=device)).transpose(0, 1)
-            mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
-
+        mask = torch.triu(torch.ones((tgt_seq_len, tgt_seq_len), device=device)).transpose(0, 1)
+        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
         return mask
 
 
-    def forward(self, tgt, memory):
+    def forward(self, tgt, bos_idx, memory):
         # tgt.shape= (seq_len, batch_size, 1)
-        x = self._embedder(tgt)
+        x = self._embedder(tgt, bos_idx)
         # x.shape = (seq_len, batch_size, d_model)
-        """Aqui, o quizá antes del embedder, iría el shifting. Supongo que se añade un primer token artificial y se elimina el ultimo token de la secuencia.
-        Así si que tiene sentido la mascara que antes no me cuadraba"""
         x = self._positional_encoder(x)
         return self._decoder(x, memory, tgt_mask=self._generate_tgt_mask(tgt.shape[0]))
+
 
 class Transformer(nn.Module):
     def __init__(self, image_size, feature_extractor=ResNet18, num_transformer_layers=6, num_cp=3, transformer_encoder=True):
@@ -74,31 +85,34 @@ class Transformer(nn.Module):
         else:
             self._encoder = feature_extractor()
         self.d_model = self._encoder.d_model
-        self._decoder = TransformerDecoder(self.d_model, image_size, num_layers=num_transformer_layers)
+        self._decoder = TransformerDecoder(self.d_model, num_layers=num_transformer_layers)
 
-        self._out_probabilites = nn.Linear(self.d_model, 1+image_size*image_size)
+        self._out_cp = nn.Linear(self.d_model, 2)
+
 
     def forward(self, image_input):
+        batch_size = image_input.shape[0]
         memory = self._encoder(image_input)
 
-        control_points = torch.empty((self.num_cp+1, image_input.shape[0]))
-        control_points[0] = self.image_size*self.image_size
+        control_points = torch.empty((1, batch_size, 2), device=image_input.device)
+        bos_idx = torch.zeros(self.num_cp+1, dtype=torch.long, device=image_input.device)
+        num_bos = 1
 
-        # Generamos self.num_cp puntos de control (algunos de los cuales pueden ser padding)
-        # En concreto, seran padding aquellos predichos despes del EOS token (y el EOS token tambien)
+        # Generamos self.num_cp puntos de control (ninguno puede ser padding)
         for n in range(1, self.num_cp+1):
-            # Ejecutamos el decoder para obtener un nuevo punto de control, o el EOS
-            output = self._decoder(control_points[:n], memory)
+            # Ejecutamos el decoder para obtener un nuevo punto de control
+            output = self._decoder(control_points, bos_idx[:num_bos], memory)
             output = output[-1]
 
-            probabilities = self._out_probabilites(output).view(image_input.shape[0], -1)
-            actual = torch.argmax(probabilities, dim=1)
-            control_points[n] = actual
+            cp = torch.sigmoid(self._out_cp(output)).view(1, batch_size, -1)
+            control_points = torch.cat((control_points, cp), dim=0)
 
-        control_points = control_points[1:]
-        out_control_points = torch.empty((len(control_points), 2), device=image_input.device)
-        for i, cp in enumerate(control_points):
-            out_control_points[i] = torch.tensor([cp//self.image_size, cp%self.image_size])
+        #return control_points, control_points
+        # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size)x(0, im_size)
+        control_points = control_points[1:] * self.image_size
 
-        return out_control_points
+        # Calculamos el tensor num_cps (POR IMPLEMENTAR PARA MultiCP !!!!!!!!!!!!!!!!)
+        num_cps = self.num_cp*torch.ones(batch_size, dtype=torch.long, device=image_input.device)
+
+        return control_points, num_cps
 

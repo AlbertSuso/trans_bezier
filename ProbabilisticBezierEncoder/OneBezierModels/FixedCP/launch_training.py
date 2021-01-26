@@ -3,8 +3,8 @@ import os
 import torch
 
 from torch.optim import Adam
-from DeterministicBezierEncoder.OneBezierModels.MultiCP.transformer import Transformer
-from DeterministicBezierEncoder.OneBezierModels.MultiCP.training import train_one_bezier_transformer
+from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.transformer import Transformer
+from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.training import train_one_bezier_transformer
 from Utils.feature_extractor import ResNet18
 
 
@@ -37,7 +37,7 @@ num_experiment = args.num_experiment if args.num_experiment is not None else 0
 new_model = args.new_model if args.new_model is not None else True
 
 transformer_encoder = args.transformer_encoder if args.transformer_encoder is not None else True
-num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 4
+num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 6
 num_control_points = args.num_control_points if args.num_control_points is not None else 3
 
 batch_size = args.batch_size if args.batch_size is not None else 64
@@ -55,7 +55,7 @@ image_size = 64
 model = Transformer(image_size, feature_extractor=ResNet18, num_transformer_layers=num_transformer_layers,
                     num_cp=num_control_points, transformer_encoder=transformer_encoder)
 if not new_model:
-    model.load_state_dict(torch.load(state_dict_basedir+"/state_dicts/DeterministicBezierEncoder/OneBezierModels/fixedCP/"+str(model.num_cp)+"CP_exp"+str(num_experiment)))
+    model.load_state_dict(torch.load(state_dict_basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/fixedCP/"+str(model.num_cp)+"CP_exp"+str(num_experiment)))
 
 """SELECT OPTIMIZATOR AND RUN TRAINING"""
 optimizer = Adam

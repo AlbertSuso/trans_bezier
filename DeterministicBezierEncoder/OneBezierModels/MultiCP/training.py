@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import torchvision
 
 from torch.utils.tensorboard import SummaryWriter
-from DeterministicBezierEncoder.OneBezierModels.FixedCP.dataset_generation import bezier
+from DeterministicBezierEncoder.OneBezierModels.MultiCP.dataset_generation import bezier
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from Utils.chamfer_distance import chamfer_distance
 from Utils.probabilistic_map import ProbabilisticMap

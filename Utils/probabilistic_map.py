@@ -19,42 +19,50 @@ class ProbabilisticMap(nn.Module):
             positions[:, :, y, 0, 1] = y
         self.register_buffer('positions', positions)
 
-    def _normal_dist_parameters(self, t, cp_means, cp_covariances):
+    def _normal_dist_parameters(self, t, cp_means, num_cps, cp_covariances):
         """
         Calcula la media y la matriz de covariancias de la distribucion normal que simean = torch.zeros_like(cp_means[0])gue la curva de bezier
         probabilistica en los tiempos del array de tiempos "t"
 
-        cp_means.shape=(num_cp, batch_size, cp_size)
-        cp_covariances.shape = (num_cp, batch_size, cp_size, cp_size)
+        cp_means.shape=(num_cp, batch_size, 2)
+        cp_covariances.shape = (num_cp, batch_size, 2, 2)
         t.shape = (temporal_size)
+        num_cps.shape=(batch_size)
         """
+        # Calculamos los coeficientes binomiales necesarios para la computacion de los parametros
+        binomial_coefs = torch.zeros_like(cp_means[:, :, 0]).unsqueeze(-1)
+        for i, num_cp in enumerate(num_cps):
+            binomial_coefs[:num_cp, i, 0] = binom((num_cp - 1).cpu(), [k for k in range(num_cp)])
+
         # Añadimos una dimension para el tiempo.
         cp_means = cp_means.unsqueeze(2)
         cp_means = cp_means.repeat(1, 1, self._map_temporalSize, 1)
         cp_covariances = cp_covariances.unsqueeze(2)
         cp_covariances = cp_covariances.repeat(1, 1, self._map_temporalSize, 1, 1)
         # Adaptamos la shape de t para poder vectorizar las operaciones
-        t = t.view(1, -1, 1)
-
-        N = cp_means.shape[0] - 1
+        t = t.view(1, -1)
         t_inv = 1 - t
+        num_cps = num_cps.unsqueeze(-1)
 
         mean = torch.zeros_like(cp_means[0])
         covariance = torch.zeros_like(cp_covariances[0])
 
         for i, (cp_mean, cp_covariance) in enumerate(zip(cp_means, cp_covariances)):
-            mean += binom(N, i) * t ** i * t_inv ** (N - i) * cp_mean
-            covariance += (binom(N, i) * t.unsqueeze(-1) ** i * t_inv.unsqueeze(-1) ** (N - i)) ** 2 * cp_covariance
+            pot = (num_cps - 1 - i)
+            pot[pot < 0] = 0
+
+            mean += (binomial_coefs[i] * t ** i * t_inv ** pot).unsqueeze(-1) * cp_mean
+            covariance += (binomial_coefs[i] * t ** i * t_inv ** pot).unsqueeze(-1).unsqueeze(-1) ** 2 * cp_covariance
 
         return mean, covariance
 
-    def normal2d(self, mean, covariance):
+    def _normal2d(self, mean, covariance):
         """
         Devuelve un batch de mapas 3D de shape (64, 64, temporal_size), siendo cada slice (64, 64, t)
         la distribucion de probabilidades de la curva de bezier en tiempo t.
 
-        mean.shape = (batch_size, cp_size)
-        cov.shape = (batch_size, cp_size, cp_size)
+        mean.shape = (batch_size, 2) (2=cp_size)
+        cov.shape = (batch_size, 2, 2)
         """
         # TODOS LOS UNSQUEEZE SON PARA QUE LAS DIMENSIONES CUADREN Y SE PUEDAN VECTORIZAR LAS OPERACIONES
         # Esto es debido a que p.shape=(1, 64, 64, 2). Por tanto las 3 primeras componentes de cada tensor son
@@ -70,7 +78,7 @@ class ProbabilisticMap(nn.Module):
         return up[:, :, :, :, 0, 0]/divisor
 
 
-    def forward(self, cp_means, cp_covariances):
+    def forward(self, cp_means, num_cps, cp_covariances):
         """
         A partir de las medias de los puntos de control y sus matrices de covariancias, genera un batch de mapas
         probabilisticos de tamaño (batch_size, image_height, image_width, temporal_size).
@@ -78,11 +86,14 @@ class ProbabilisticMap(nn.Module):
         curva de bezier "i" en el tiempo "t".
 
         cp_means.shape = (num_cp, batch_size, 2)
+        num_cps.shape = (batch_size)
         cp_covariances.shape = (num_cp, batch_size, 2, 2)
+
+        output.shape = (batch_size, image_height, image_width, temporal_size)
         """
         mean, covariance = self._normal_dist_parameters(torch.linspace(0, 1, self._map_temporalSize, device=cp_means.device),
-                                                        cp_means, cp_covariances)
-        return self.normal2d(mean, covariance)
+                                                        cp_means, num_cps, cp_covariances)
+        return self._normal2d(mean, covariance)
 
 
 if __name__ == '__main__':
@@ -109,7 +120,7 @@ if __name__ == '__main__':
         cp_means[i, :, 0] = seq[i] // 64
         cp_means[i, :, 1] = seq[i] % 64
 
-    cp_covariance = torch.tensor([[[3, 0], [0, 3]] for i in range(num_cp)], dtype=torch.float32)
+    cp_covariance = torch.tensor([[[30, 0], [0, 30]] for i in range(num_cp)], dtype=torch.float32)
     cp_covariances = torch.empty((num_cp, batch_size, 2, 2))
     for i in range(batch_size):
         cp_covariances[:, i, :, :] = cp_covariance
@@ -122,7 +133,7 @@ if __name__ == '__main__':
     print("cp_means.shape=", cp_means.shape)
     print("cp_covariances.shape=", cp_covariances.shape)
     t0 = time.time()
-    map = map_maker(cp_means, cp_covariances)
+    map = map_maker(cp_means, num_cp*torch.ones(batch_size, dtype=torch.long, device='cuda'), cp_covariances)
     print("map.shape=", map.shape)
     reduced_map, _ = torch.max(map, dim=3)
     reduced_map = reduced_map/torch.max(reduced_map)

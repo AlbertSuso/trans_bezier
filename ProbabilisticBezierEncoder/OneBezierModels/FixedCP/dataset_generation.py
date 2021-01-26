@@ -22,7 +22,7 @@ class OneBezierDataset(Dataset):
 def bezier(CP, num_cps, t, device='cuda'):
     """
     CP.shape = (max_num_cp, batch_size, 2)
-    num_cp.shape = (batch_size)
+    num_cps.shape = (batch_size)
     t.shape=(1, resolution)
 
     Returns tensor of shape=(batch_size, resolution, 2) containing the "resolution" points belonging to the "batch_size" bezier curves evaluated in "t".

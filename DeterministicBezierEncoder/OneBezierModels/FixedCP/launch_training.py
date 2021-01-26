@@ -3,8 +3,8 @@ import os
 import torch
 
 from torch.optim import Adam
-from DeterministicBezierEncoder.OneBezierModels.MultiCP.transformer import Transformer
-from DeterministicBezierEncoder.OneBezierModels.MultiCP.training import train_one_bezier_transformer
+from DeterministicBezierEncoder.OneBezierModels.FixedCP.transformer import Transformer
+from DeterministicBezierEncoder.OneBezierModels.FixedCP.training import train_one_bezier_transformer
 from Utils.feature_extractor import ResNet18
 
 
