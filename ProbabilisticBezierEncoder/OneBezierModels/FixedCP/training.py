@@ -1,5 +1,6 @@
 import torch
 import torchvision
+import torch.nn.functional as F
 
 from torch.utils.tensorboard import SummaryWriter
 from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.dataset_generation import bezier
@@ -13,6 +14,7 @@ def intersection_over_union(predicted, target):
 
 def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
                                  num_experiment, lr=1e-4, cuda=True, debug=True):
+    # torch.autograd.set_detect_anomaly(True)
     print("\n\nTHE TRAINING BEGINS")
     print("Experiment #{} ---> batch_size={} num_epochs={} learning_rate={}".format(
         num_experiment,  batch_size, num_epochs, lr))
@@ -58,6 +60,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     optimizer = optimizer(model.parameters(), lr=lr)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=10**(-0.5), patience=8, min_lr=1e-8)
 
+    tgt_control_points = 64*torch.rand((3, 64, 2), device='cuda')
     for epoch in range(num_epochs):
         print("Beginning epoch number", epoch+1)
         for i in range(0, len(im_training)-batch_size+1, batch_size):
@@ -70,11 +73,13 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Calculamos el mapa de probabilidades asociado a la curva de bezier probabilistica
             probability_map = probabilistic_map_generator(control_points, num_cps, cp_covariances)
             reduced_map, _ = torch.max(probability_map, dim=-1)
-            reduced_map = reduced_map / torch.max(reduced_map)
 
             #Calculamos la loss
-            # loss = -torch.sum(reduced_map*im)
-            loss = torch.sum(control_points)
+            loss = -torch.sum(reduced_map*im)/torch.sum(im)
+            #loss = F.mse_loss(control_points, tgt_control_points)
+            print("Iteracion", i / 64)
+            print("La loss es", loss)
+            assert not torch.isnan(loss), "{}".format(control_points)
 
             if debug:
                 cummulative_loss += loss
@@ -83,6 +88,14 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             loss.backward()
             optimizer.step()
             model.zero_grad()
+
+            num_nan = 0
+            for name, param in model.named_parameters():
+                num_nan += torch.sum(torch.isnan(param))
+                if name == "_decoder._embedder._cp_embedder.weight":
+                    print("Los pesos que petan son\n", torch.sum(torch.abs(param)))
+                    print("Estos suponen un total de", torch.sum(torch.isnan(param)))
+            print("El numero de pesos del modelo que son nan es", num_nan)
 
             # Recopilación de datos para tensorboard
             k = int(40000/(batch_size*5))
@@ -99,6 +112,9 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
              Calcularemos las metricas IoU, chamfer_distance, y differentiable_chamfer_distance (probabilistic_map)
              asociadas a estas prediciones (comparandolas con el ground truth).
         """
+
+        """
+        print("ENTRAMOS EN EVALUATION")
         model.eval()
         with torch.no_grad():
             cummulative_loss = 0
@@ -110,7 +126,6 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
                 probability_map = probabilistic_map_generator(control_points, num_cps, cp_covariances)
                 reduced_map, _ = torch.max(probability_map, dim=-1)
-                reduced_map = reduced_map / torch.max(reduced_map)
                 loss = -torch.sum(reduced_map * im)
 
                 cummulative_loss += loss
@@ -127,25 +142,30 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
                 torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/"+str(model.num_cp)+"CP_exp"+str(num_experiment))
+            else:
+                print("El modelo no ha mejorado!! Ultima loss={}".format(cummulative_loss/(j/batch_size+1)))
             cummulative_loss = 0
 
+            
             # Iniciamos la evaluación del modo "predicción"
             iou_value = 0
             chamfer_value = 0
-            probabilistic_similarity = 0
 
             # Inicialmente, predeciremos 10 imagenes que almacenaremos en tensorboard
             target_images = im_validation[0:200:20]
             predicted_images = torch.zeros_like(target_images)
             control_points, num_cps = model(target_images)
             # Renderizamos las imagenes predichas
-            im_seq = bezier(control_points, num_cps, torch.linspace(0, 1, 150).unsqueeze(0), device='cuda')
-            for i in range(batch_size):
+            im_seq = bezier(control_points, num_cps, torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
+            for i in range(10):
                 predicted_images[i, 0, im_seq[i, :, 0], im_seq[i, :, 1]] = 1
             # Calculamos metricas
             iou_value += intersection_over_union(predicted_images, target_images)
-            chamfer_value += chamfer_distance(predicted_images[:, 0].cpu().numpy(), target_images[:, 0].cpu().numpy())
+            # chamfer_value += chamfer_distance(predicted_images[:, 0].cpu().numpy(), target_images[:, 0].cpu().numpy())
             # Guardamos estas primeras 10 imagenes en tensorboard
+            print("Las shapes de las imagenes son")
+            print(target_images.shape)
+            print(predicted_images.shape)
             img_grid = torchvision.utils.make_grid(target_images)
             writer.add_image('target_images', img_grid)
             img_grid = torchvision.utils.make_grid(predicted_images)
@@ -156,12 +176,12 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             predicted_images = torch.zeros_like(target_images)
             control_points, num_cps = model(target_images)
             # Renderizamos las imagenes predichas
-            im_seq = bezier(control_points, num_cps, torch.linspace(0, 1, 150).unsqueeze(0), device='cuda')
-            for i in range(batch_size):
+            im_seq = bezier(control_points, num_cps, torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
+            for i in range(490):
                 predicted_images[i, 0, im_seq[i, :, 0], im_seq[i, :, 1]] = 1
             # Calculamos metricas
             iou_value += intersection_over_union(predicted_images, target_images)
-            chamfer_value += chamfer_distance(predicted_images[:, 0].cpu().numpy(), target_images[:, 0].cpu().numpy())
+            # chamfer_value += chamfer_distance(predicted_images[:, 0].cpu().numpy(), target_images[:, 0].cpu().numpy())
 
             # Guardamos los resultados en tensorboard
             writer.add_scalar("Prediction/IoU", iou_value / 500, counter)
@@ -169,3 +189,5 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
         # Volvemos al modo train para la siguiente epoca
         model.train()
+        """
+        print("SALIMOS DE EVALUATION")

@@ -71,7 +71,8 @@ class TransformerDecoder(nn.Module):
         x = self._embedder(tgt, bos_idx)
         # x.shape = (seq_len, batch_size, d_model)
         x = self._positional_encoder(x)
-        return self._decoder(x, memory, tgt_mask=self._generate_tgt_mask(tgt.shape[0]))
+        out = self._decoder(x, memory, tgt_mask=self._generate_tgt_mask(tgt.shape[0]))
+        return out
 
 
 class Transformer(nn.Module):

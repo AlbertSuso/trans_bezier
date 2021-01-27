@@ -42,7 +42,7 @@ num_control_points = args.num_control_points if args.num_control_points is not N
 
 batch_size = args.batch_size if args.batch_size is not None else 64
 num_epochs = args.num_epochs if args.num_epochs is not None else 100
-learning_rate = args.learning_rate if args.learning_rate is not None else 0.00005
+learning_rate = args.learning_rate if args.learning_rate is not None else 0.0000005
 state_dicts_path = args.state_dicts
 
 """LOADING DATASET"""
