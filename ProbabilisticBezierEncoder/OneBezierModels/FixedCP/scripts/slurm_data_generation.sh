@@ -9,10 +9,10 @@
 #SBATCH -D /home/asuso/trans_bezier
 ##############
 # a file for job output, you can check job progress
-#SBATCH --output=./DeterministicBezierEncoder/OneBezierModels/FixedCP/dataset_generation.out
+#SBATCH --output=./ProbabilisticBezierEncoder/OneBezierModels/FixedCP/dataset_generation.out
 #################
 # a file for errors from the job
-#SBATCH --error=./DeterministicBezierEncoder/OneBezierModels/FixedCP/dataset_generation.err
+#SBATCH --error=./ProbabilisticBezierEncoder/OneBezierModels/FixedCP/dataset_generation.err
 #################
 # time you think you need
 # In this case, hh:mm:ss, select whatever time you want, the less you ask for the # faster your job will run.
@@ -45,7 +45,7 @@
 
 #################
 # Prepare the experiment to run
-CODE="python -u DeterministicBezierEncoder/OneBezierModels/FixedCP/dataset_generation.py"
+CODE="python -u ProbabilisticBezierEncoder/OneBezierModels/FixedCP/dataset_generation.py"
 
 #################
 # Prepare the experiment to run

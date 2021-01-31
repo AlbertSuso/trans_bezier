@@ -9,10 +9,10 @@
 #SBATCH -D /home/asuso/trans_bezier
 ##############
 # a file for job output, you can check job progress
-#SBATCH --output=./DeterministicBezierEncoder/OneBezierModels/FixedCP/transformer_bezier.out
+#SBATCH --output=./ProbabilisticBezierEncoder/OneBezierModels/FixedCP/transformer_bezier.out
 #################
 # a file for errors from the job
-#SBATCH --error=./DeterministicBezierEncoder/OneBezierModels/FixedCP/transformer_bezier.err
+#SBATCH --error=./ProbabilisticBezierEncoder/OneBezierModels/FixedCP/transformer_bezier.err
 #################
 # time you think you need
 # In this case, hh:mm:ss, select whatever time you want, the less you ask for the # faster your job will run.
@@ -45,7 +45,7 @@ set -- $1
 
 #################
 # Prepare the experiment to run
-CODE="python -u main.py --num_experiment $1 --new_model $new_model --num_transformer_layers $num_transformer_layers --num_control_points $num_control_points --transformer_encoder $trans_encoder --batch_size $batch_size --num_epochs $num_epochs --control_points_variance $control_points_variance --learning_rate $learning_rate"
+CODE="python -u main.py --num_experiment $1 --new_model $new_model --control_points_variance $control_points_variance --num_transformer_layers $num_transformer_layers --num_control_points $num_control_points --transformer_encoder $trans_encoder --batch_size $batch_size --num_epochs $num_epochs --learning_rate $learning_rate"
 
 #################
 # Prepare the experiment to run
