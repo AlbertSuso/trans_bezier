@@ -95,7 +95,7 @@ class Transformer(nn.Module):
         batch_size = image_input.shape[0]
         memory = self._encoder(image_input)
 
-        control_points = torch.empty((1, batch_size, 2), device=image_input.device)
+        control_points = torch.zeros((1, batch_size, 2), dtype=torch.float32, device=image_input.device)
         bos_idx = torch.zeros(self.num_cp+1, dtype=torch.long, device=image_input.device)
         num_bos = 1
 
@@ -108,7 +108,6 @@ class Transformer(nn.Module):
             cp = torch.sigmoid(self._out_cp(output)).view(1, batch_size, -1)
             control_points = torch.cat((control_points, cp), dim=0)
 
-        #return control_points, control_points
         # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size)x(0, im_size)
         control_points = control_points[1:] * self.image_size
 

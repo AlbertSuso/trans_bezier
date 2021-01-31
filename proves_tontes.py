@@ -1,9 +1,27 @@
 import torch
 
-a = torch.ones((10, 2), dtype=torch.long)
 
-idx = torch.tensor([0, 2, 4, 6, 8], dtype=torch.long)
-vals = torch.tensor([[-5, -32]], dtype=torch.long)
+a = torch.tensor([1, 2], dtype=torch.float32, requires_grad=True)
+b = torch.tensor([1, 2], dtype=torch.float32, requires_grad=True)
+c = 3*a
+d = 5*b
+loss_a = torch.sum(c)
+loss_b = torch.sum(d)
+loss_a.backward()
+loss_b.backward()
+print(a.grad)
+print(b.grad)
 
-a[idx] = vals
-print(a)
+
+
+a = torch.tensor([1, 2], dtype=torch.float32, requires_grad=True)
+b = torch.tensor([1, 2], dtype=torch.float32, requires_grad=True)
+c = 3*a
+d = 5*b
+
+c[0] = d[0]
+
+loss_a = torch.sum(c)
+loss_a.backward()
+print(a.grad)
+print(b.grad)

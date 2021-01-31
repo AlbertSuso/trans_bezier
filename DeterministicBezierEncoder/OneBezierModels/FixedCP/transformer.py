@@ -39,9 +39,8 @@ class TransformerDecoder(nn.Module):
         self._decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
 
 
-    def _generate_tgt_mask(self, tgt_seq_len, type=1, cuda=True):
+    def _generate_tgt_mask(self, tgt_seq_len, type=1, device='cuda'):
         mask = None
-        device = 'cuda' if cuda else 'cpu'
         # La primera fila se enmascara totalmente, y la última posición de la última fila también se enmascara
         if type == 0:
             mask = torch.triu(torch.ones((tgt_seq_len, tgt_seq_len), device=device))
@@ -58,10 +57,8 @@ class TransformerDecoder(nn.Module):
         # tgt.shape= (seq_len, batch_size, 1)
         x = self._embedder(tgt)
         # x.shape = (seq_len, batch_size, d_model)
-        """Aqui, o quizá antes del embedder, iría el shifting. Supongo que se añade un primer token artificial y se elimina el ultimo token de la secuencia.
-        Así si que tiene sentido la mascara que antes no me cuadraba"""
         x = self._positional_encoder(x)
-        return self._decoder(x, memory, tgt_mask=self._generate_tgt_mask(tgt.shape[0]))
+        return self._decoder(x, memory, tgt_mask=self._generate_tgt_mask(tgt.shape[0], device=x.device))
 
 class Transformer(nn.Module):
     def __init__(self, image_size, feature_extractor=ResNet18, num_transformer_layers=6, num_cp=3, transformer_encoder=True):
@@ -76,7 +73,7 @@ class Transformer(nn.Module):
         self.d_model = self._encoder.d_model
         self._decoder = TransformerDecoder(self.d_model, image_size, num_layers=num_transformer_layers)
 
-        self._out_probabilites = nn.Linear(self.d_model, 1+image_size*image_size)
+        self._out_probabilites = nn.Linear(self.d_model, 1 + image_size*image_size)
 
     def forward(self, image_inputs, tgt_seq):
         # Aplicamos el encoder
@@ -102,7 +99,7 @@ class Transformer(nn.Module):
 
         # Mientras el ganador no sea el que indica que debemos parar la ejecucón
         n = 0
-        while n == 0 or (n < self.num_cp+1 and actual != self.image_size*self.image_size):
+        while (actual != self.image_size*self.image_size and n < self.num_cp) or n == 0:
             n += 1
             control_points.append(actual)
 

@@ -61,6 +61,6 @@ if not new_model:
 optimizer = Adam
 
 train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
-                             num_experiment, lr=learning_rate, cuda=True, debug=True)
+                             num_experiment, lr=learning_rate, cuda=False, debug=True)
 
 print("FINISHED TRAINING WITH EXIT")

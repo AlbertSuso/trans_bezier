@@ -39,9 +39,8 @@ class TransformerDecoder(nn.Module):
         self._decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
 
 
-    def _generate_tgt_mask(self, tgt_seq_len, type=1, cuda=True):
+    def _generate_tgt_mask(self, tgt_seq_len, type=1, device='cuda'):
         mask = None
-        device = 'cuda' if cuda else 'cpu'
         # La primera fila se enmascara totalmente, y la última posición de la última fila también se enmascara
         if type == 0:
             mask = torch.triu(torch.ones((tgt_seq_len, tgt_seq_len), device=device))
@@ -61,7 +60,7 @@ class TransformerDecoder(nn.Module):
         """Aqui, o quizá antes del embedder, iría el shifting. Supongo que se añade un primer token artificial y se elimina el ultimo token de la secuencia.
         Así si que tiene sentido la mascara que antes no me cuadraba"""
         x = self._positional_encoder(x)
-        return self._decoder(x, memory, tgt_mask=self._generate_tgt_mask(tgt.shape[0]), tgt_key_padding_mask=tgt_key_padding_mask)
+        return self._decoder(x, memory, tgt_mask=self._generate_tgt_mask(tgt.shape[0], device=x.device), tgt_key_padding_mask=tgt_key_padding_mask)
 
 class Transformer(nn.Module):
     def __init__(self, image_size, feature_extractor=ResNet18, num_transformer_layers=6, num_cp=3, transformer_encoder=True):

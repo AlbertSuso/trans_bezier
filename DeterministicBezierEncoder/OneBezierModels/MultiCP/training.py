@@ -171,16 +171,18 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
                 control_points = model.predict(tgt_im)
                 resolution = 150
-                for t in torch.linspace(0, 1, resolution):
-                    output = bezier(control_points, t)
-                    output = torch.round(output).long()
-                    pred_im[0, 0, output[0], output[1]] = 1
+                output = bezier(control_points.unsqueeze(1),
+                                torch.tensor([len(control_points)], dtype=torch.long, device=control_points.device),
+                                torch.linspace(0, 1, resolution, device=control_points.device).unsqueeze(0), device=control_points.device)
+                pred_im[0, 0, output[0, :, 0], output[0, :, 1]] = 1
 
                 iou_value += intersection_over_union(pred_im, tgt_im)
                 chamfer_value += chamfer_distance(pred_im[0].cpu().numpy(), tgt_im[0].cpu().numpy())
 
                 if control_points.shape[0] > 0:
-                    probability_map = probabilistic_map_generator(control_points.unsqueeze(1), cp_covariances)
+                    probability_map = probabilistic_map_generator(control_points.unsqueeze(1),
+                                                                  len(control_points)*torch.ones(1, dtype=torch.long, device=control_points.device),
+                                                                  cp_covariances)
                     reduced_map, _ = torch.max(probability_map, dim=3)
                     reduced_map = reduced_map / torch.max(reduced_map)
                     probabilistic_similarity += torch.sum(reduced_map*tgt_im)
@@ -201,16 +203,19 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
                 control_points = model.predict(tgt_im)
                 resolution = 150
-                for j, t in enumerate(torch.linspace(0, 1, resolution)):
-                    output = bezier(control_points, t)
-                    output = torch.round(output).long()
-                    pred_im[0, 0, output[0], output[1]] = 1
+                output = bezier(control_points.unsqueeze(1),
+                                torch.tensor([len(control_points)], dtype=torch.long, device=control_points.device),
+                                torch.linspace(0, 1, resolution, device=control_points.device).unsqueeze(0),
+                                device=control_points.device)
+                pred_im[0, 0, output[0, :, 0], output[0, :, 1]] = 1
 
                 iou_value += intersection_over_union(pred_im, tgt_im)
                 chamfer_value += chamfer_distance(pred_im[0].cpu().numpy(), tgt_im[0].cpu().numpy())
 
                 if control_points.shape[0] > 0:
-                    probability_map = probabilistic_map_generator(control_points.unsqueeze(1), cp_covariances)
+                    probability_map = probabilistic_map_generator(control_points.unsqueeze(1),
+                                                                  len(control_points)*torch.ones(1, dtype=torch.long, device=control_points.device),
+                                                                  cp_covariances)
                     reduced_map, _ = torch.max(probability_map, dim=3)
                     reduced_map = reduced_map / torch.max(reduced_map)
                     probabilistic_similarity += torch.sum(reduced_map * tgt_im)
