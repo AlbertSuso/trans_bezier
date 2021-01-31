@@ -24,7 +24,7 @@ parser.add_argument('-trans_encoder', '--transformer_encoder', type=bool)
 parser.add_argument('-ntl', '--num_transformer_layers', type=int)
 parser.add_argument('-ncp', '--num_control_points', type=int)
 
-parser.add_argument('-cpv', '--control_points_variance', type=int)
+parser.add_argument('-cpv', '--cp_variance', type=int)
 
 parser.add_argument('-bs', '--batch_size', type=int)
 parser.add_argument('-e', '--num_epochs', type=int)
@@ -42,7 +42,7 @@ transformer_encoder = args.transformer_encoder if args.transformer_encoder is no
 num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 6
 num_control_points = args.num_control_points if args.num_control_points is not None else 3
 
-control_points_variance = args.control_points_variance if args.control_points_variance is not None else 30
+cp_variance = args.cp_variance if args.cp_variance is not None else 30
 
 batch_size = args.batch_size if args.batch_size is not None else 64
 num_epochs = args.num_epochs if args.num_epochs is not None else 100
@@ -65,6 +65,6 @@ if not new_model:
 optimizer = Adam
 
 train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
-                             num_experiment, control_points_variance, lr=learning_rate, cuda=True, debug=True)
+                             num_experiment, cp_variance, lr=learning_rate, cuda=True, debug=True)
 
 print("FINISHED TRAINING WITH EXIT")
