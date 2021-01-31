@@ -177,8 +177,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                                                                   len(control_points)*torch.ones(1, dtype=torch.long, device=control_points.device),
                                                                   cp_covariances[:len(control_points)].unsqueeze(1))
                     reduced_map, _ = torch.max(probability_map, dim=3)
-                    reduced_map = reduced_map / torch.max(reduced_map)
-                    probabilistic_similarity += torch.sum(reduced_map*tgt_im)
+                    probabilistic_similarity += torch.sum(reduced_map*tgt_im)/torch.sum(tgt_im)
 
                 target_images[idx//20] = tgt_im.unsqueeze(0)
                 predicted_images[idx // 20] = pred_im.unsqueeze(0)
@@ -210,8 +209,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                                                                   len(control_points)*torch.ones(1, dtype=torch.long, device=control_points.device),
                                                                   cp_covariances[:len(control_points)].unsqueeze(1))
                     reduced_map, _ = torch.max(probability_map, dim=3)
-                    reduced_map = reduced_map / torch.max(reduced_map)
-                    probabilistic_similarity += torch.sum(reduced_map * tgt_im)
+                    probabilistic_similarity += torch.sum(reduced_map * tgt_im)/torch.sum(tgt_im)
 
             # Guardamos el error de predicción en tensorboard
             writer.add_scalar("Prediction/IoU", iou_value/500, counter)

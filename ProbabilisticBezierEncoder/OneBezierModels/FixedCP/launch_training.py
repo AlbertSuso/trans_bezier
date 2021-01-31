@@ -24,6 +24,8 @@ parser.add_argument('-trans_encoder', '--transformer_encoder', type=bool)
 parser.add_argument('-ntl', '--num_transformer_layers', type=int)
 parser.add_argument('-ncp', '--num_control_points', type=int)
 
+parser.add_argument('-cpv', '--control_points_variance', type=int)
+
 parser.add_argument('-bs', '--batch_size', type=int)
 parser.add_argument('-e', '--num_epochs', type=int)
 parser.add_argument('-lr', '--learning_rate', type=float)
@@ -40,6 +42,8 @@ transformer_encoder = args.transformer_encoder if args.transformer_encoder is no
 num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 6
 num_control_points = args.num_control_points if args.num_control_points is not None else 3
 
+control_points_variance = args.control_points_variance if args.control_points_variance is not None else 30
+
 batch_size = args.batch_size if args.batch_size is not None else 64
 num_epochs = args.num_epochs if args.num_epochs is not None else 100
 learning_rate = args.learning_rate if args.learning_rate is not None else 0.00005
@@ -47,8 +51,8 @@ state_dicts_path = args.state_dicts
 
 """LOADING DATASET"""
 images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/fixedCP"+str(num_control_points)))
-sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/fixedCP"+str(num_control_points)))
-dataset = (images, sequences)
+# sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/fixedCP"+str(num_control_points)))
+dataset = images
 
 """INSTANTIATION OF THE MODEL"""
 image_size = 64
@@ -61,6 +65,6 @@ if not new_model:
 optimizer = Adam
 
 train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
-                             num_experiment, lr=learning_rate, cuda=True, debug=True)
+                             num_experiment, control_points_variance, lr=learning_rate, cuda=True, debug=True)
 
 print("FINISHED TRAINING WITH EXIT")

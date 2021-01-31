@@ -1,27 +1,12 @@
 import torch
+import torch.nn as nn
 
+batch_size = 5
 
-a = torch.tensor([1, 2], dtype=torch.float32, requires_grad=True)
-b = torch.tensor([1, 2], dtype=torch.float32, requires_grad=True)
-c = 3*a
-d = 5*b
-loss_a = torch.sum(c)
-loss_b = torch.sum(d)
-loss_a.backward()
-loss_b.backward()
-print(a.grad)
-print(b.grad)
+out = torch.empty((1, 5, 512))
+a = torch.zeros((0, batch_size, 2), dtype=torch.float32)
 
+layer = nn.Linear(2, 512)
 
-
-a = torch.tensor([1, 2], dtype=torch.float32, requires_grad=True)
-b = torch.tensor([1, 2], dtype=torch.float32, requires_grad=True)
-c = 3*a
-d = 5*b
-
-c[0] = d[0]
-
-loss_a = torch.sum(c)
-loss_a.backward()
-print(a.grad)
-print(b.grad)
+out[50:] = 23
+print(out)

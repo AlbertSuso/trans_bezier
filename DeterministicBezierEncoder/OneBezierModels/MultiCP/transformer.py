@@ -57,8 +57,6 @@ class TransformerDecoder(nn.Module):
         # tgt.shape= (seq_len, batch_size, 1)
         x = self._embedder(tgt)
         # x.shape = (seq_len, batch_size, d_model)
-        """Aqui, o quizá antes del embedder, iría el shifting. Supongo que se añade un primer token artificial y se elimina el ultimo token de la secuencia.
-        Así si que tiene sentido la mascara que antes no me cuadraba"""
         x = self._positional_encoder(x)
         return self._decoder(x, memory, tgt_mask=self._generate_tgt_mask(tgt.shape[0], device=x.device), tgt_key_padding_mask=tgt_key_padding_mask)
 

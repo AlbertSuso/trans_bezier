@@ -107,7 +107,7 @@ if __name__ == '__main__':
 
     batch_size = 64
     idx = 170
-    im = images[idx:idx+batch_size]
+    im = images[idx:idx+batch_size].cuda()
     seq = sequences[:-1, idx:idx+batch_size]
 
     #padding_mask = padding_masks[idx]
@@ -130,23 +130,25 @@ if __name__ == '__main__':
     map_maker = ProbabilisticMap(map_sizes=(64, 64, 50)).cuda()
 
     print("AQUI EMPIEZA DE VERDAD LA PRUEBA")
-    print("cp_means.shape=", cp_means.shape)
-    print("cp_covariances.shape=", cp_covariances.shape)
     t0 = time.time()
     map = map_maker(cp_means, num_cp*torch.ones(batch_size, dtype=torch.long, device='cuda'), cp_covariances)
-    print("map.shape=", map.shape)
-    reduced_map, _ = torch.max(map, dim=3)
-    reduced_map = reduced_map/torch.max(reduced_map)
-    print("reduced_map.shape=", reduced_map.shape)
+    max_map, _ = torch.max(map, dim=3)
+    sum_map = torch.sum(map, dim=3)
 
-    print("Tiempo transcurrido:", time.time()-t0)
+    max_loss = -torch.sum(im[:, 0] * max_map / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))
+    print("La max_loss obtenida es", max_loss)
 
-    for i in range(10):
+
+
+    sum_loss = -torch.sum(im[:, 0] * sum_map / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))
+    print("La sum_loss obtenida es", sum_loss)
+
+    for i in range(0):
         plt.figure()
         plt.subplot(1, 2, 1)
-        plt.imshow(im[i, 0], cmap='gray')
+        plt.imshow(im[i, 0].cpu(), cmap='gray')
         plt.title("Deterministic Image")
         plt.subplot(1, 2, 2)
-        plt.imshow(reduced_map[i].cpu(), cmap='gray')
+        plt.imshow(max_map[i].cpu(), cmap='gray')
         plt.title("Probability distribution")
         plt.show()

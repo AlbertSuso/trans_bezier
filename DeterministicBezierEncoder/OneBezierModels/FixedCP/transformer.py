@@ -99,7 +99,7 @@ class Transformer(nn.Module):
 
         # Mientras el ganador no sea el que indica que debemos parar la ejecucón
         n = 0
-        while (actual != self.image_size*self.image_size and n < self.num_cp) or n == 0:
+        while (actual != self.image_size*self.image_size and n < self.num_cp + 1) or n == 0:
             n += 1
             control_points.append(actual)
 

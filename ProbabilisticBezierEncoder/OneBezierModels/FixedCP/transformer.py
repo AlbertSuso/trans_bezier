@@ -4,20 +4,29 @@ import torch.nn as nn
 from Utils.feature_extractor import ResNet18
 from Utils.positional_encoder import PositionalEncoder
 
+"""
+Very simplified model that always produces a fixed number of control points. In consequence, it doesn't generate BOS
+nor EOS flags. It always receives one BOS flag as input in the first position of the sequence.
+"""
+
 
 class Embedder(nn.Module):
     def __init__(self, d_model):
         super().__init__()
+        self._d_model = d_model
         # Embedding for the BOS (begin of sequence)
         self._bos_embedder = nn.Embedding(1, d_model)
         # Embedding for the control points
         self._cp_embedder = nn.Linear(2, d_model)
 
 
-    def forward(self, tgt_seq, bos_idx):
-        bos_cod = self._bos_embedder(torch.zeros(1, dtype=torch.long, device=tgt_seq.device))
-        out = self._cp_embedder(tgt_seq)
-        out[bos_idx] = bos_cod
+    def forward(self, tgt_seq):
+        """
+        tgt_seq.shape = (num_cp, batch_size, 2)      If the true sequence has 5 CP and 1 BOS token, then num_cp=5
+        """
+        out = torch.empty((1+len(tgt_seq), tgt_seq.shape[1], self._d_model), dtype=torch.float32, device=tgt_seq.device)
+        out[0] = self._bos_embedder(torch.zeros(1, dtype=torch.long, device=tgt_seq.device))
+        out[1:] = self._cp_embedder(tgt_seq)
         return out
 
 
@@ -58,20 +67,19 @@ class TransformerDecoder(nn.Module):
         self._decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
 
 
-    def _generate_tgt_mask(self, tgt_seq_len, cuda=True):
-        device = 'cuda' if cuda else 'cpu'
+    def _generate_tgt_mask(self, tgt_seq_len, device='cuda'):
         # La primera fila se enmascara totalmente, y la última posición de la última fila también se enmascara
         mask = torch.triu(torch.ones((tgt_seq_len, tgt_seq_len), device=device)).transpose(0, 1)
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
         return mask
 
 
-    def forward(self, tgt, bos_idx, memory):
+    def forward(self, tgt, memory):
         # tgt.shape= (seq_len, batch_size, 1)
-        x = self._embedder(tgt, bos_idx)
+        x = self._embedder(tgt)
         # x.shape = (seq_len, batch_size, d_model)
         x = self._positional_encoder(x)
-        out = self._decoder(x, memory, tgt_mask=self._generate_tgt_mask(tgt.shape[0]))
+        out = self._decoder(x, memory, tgt_mask=self._generate_tgt_mask(x.shape[0], device=x.device))
         return out
 
 
@@ -95,21 +103,19 @@ class Transformer(nn.Module):
         batch_size = image_input.shape[0]
         memory = self._encoder(image_input)
 
-        control_points = torch.zeros((1, batch_size, 2), dtype=torch.float32, device=image_input.device)
-        bos_idx = torch.zeros(self.num_cp+1, dtype=torch.long, device=image_input.device)
-        num_bos = 1
+        control_points = torch.zeros((0, batch_size, 2), dtype=torch.float32, device=image_input.device)
 
         # Generamos self.num_cp puntos de control (ninguno puede ser padding)
-        for n in range(1, self.num_cp+1):
+        for n in range(self.num_cp):
             # Ejecutamos el decoder para obtener un nuevo punto de control
-            output = self._decoder(control_points, bos_idx[:num_bos], memory)
+            output = self._decoder(control_points, memory)
             output = output[-1]
 
-            cp = torch.sigmoid(self._out_cp(output)).view(1, batch_size, -1)
+            cp = torch.sigmoid(self._out_cp(output)).view(1, batch_size, 2)
             control_points = torch.cat((control_points, cp), dim=0)
 
-        # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size)x(0, im_size)
-        control_points = control_points[1:] * self.image_size
+        # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size-0.5)x(0, im_size-0.5)
+        control_points *= self.image_size-0.5
 
         # Calculamos el tensor num_cps (POR IMPLEMENTAR PARA MultiCP !!!!!!!!!!!!!!!!)
         num_cps = self.num_cp*torch.ones(batch_size, dtype=torch.long, device=image_input.device)
