@@ -8,7 +8,6 @@ case $1 in
 		learning_rate="0.00005"
 		num_control_points="3"
 		num_transformer_layers="6"
-		cp_variance="5"
 		new_model="True"
 		;;
 	1)
@@ -17,7 +16,6 @@ case $1 in
 		learning_rate="0.00005"
 		num_control_points="3"
 		num_transformer_layers="6"
-		cp_variance="20"
 		new_model="True"
 		;;
 	2)
@@ -26,7 +24,6 @@ case $1 in
 		learning_rate="0.00005"
 		num_control_points="3"
 		num_transformer_layers="6"
-		cp_variance="35"
 		new_model="True"
 		;;
 	3)
@@ -35,7 +32,6 @@ case $1 in
 		learning_rate="0.00005"
 		num_control_points="3"
 		num_transformer_layers="6"
-		cp_variance="50"
 		new_model="True"
 		;;
 	*)

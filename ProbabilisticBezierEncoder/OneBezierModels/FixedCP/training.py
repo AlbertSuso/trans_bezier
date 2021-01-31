@@ -41,7 +41,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/"+str(model.num_cp)+"CP_exp"+str(num_experiment))
+        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/"+str(model.num_cp)+"var"+str(cp_variance)+"_exp"+str(num_experiment))
         counter = 0
 
     # Obtenemos las imagenes del dataset
