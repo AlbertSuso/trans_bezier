@@ -25,6 +25,8 @@ parser.add_argument('-ntl', '--num_transformer_layers', type=int)
 parser.add_argument('-ncp', '--num_control_points', type=int)
 
 parser.add_argument('-cpv', '--cp_variance', type=int)
+parser.add_argument('-vdrop', '--variance_drop', type=float)
+parser.add_argument('-edrop', '--epochs_drop', type=int)
 
 parser.add_argument('-bs', '--batch_size', type=int)
 parser.add_argument('-e', '--num_epochs', type=int)
@@ -43,6 +45,8 @@ num_transformer_layers = args.num_transformer_layers if args.num_transformer_lay
 num_control_points = args.num_control_points if args.num_control_points is not None else 3
 
 cp_variance = args.cp_variance if args.cp_variance is not None else 30
+variance_drop = args.variance_drop if args.variance_drop is not None else 0.5
+epochs_drop = args.epochs_drop if args.epochs_drop is not None else 8
 
 batch_size = args.batch_size if args.batch_size is not None else 64
 num_epochs = args.num_epochs if args.num_epochs is not None else 100
