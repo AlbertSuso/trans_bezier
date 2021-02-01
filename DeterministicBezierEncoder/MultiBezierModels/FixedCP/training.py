@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import torchvision
 
 from torch.utils.tensorboard import SummaryWriter
-from DeterministicBezierEncoder.OneBezierModels.FixedCP.dataset_generation import bezier
+from DeterministicBezierEncoder.MultiBezierModels.FixedCP.dataset_generation import bezier
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from Utils.chamfer_distance import chamfer_distance
 from Utils.probabilistic_map import ProbabilisticMap
@@ -113,7 +113,6 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
         model.eval()
         with torch.no_grad():
             cummulative_loss = 0
-            num_vueltas = 0
             for j in range(0, len(im_validation)-batch_size+1, batch_size):
                 im = im_validation[j:j + batch_size]
                 seq = seq_validation[:, j:j + batch_size]
@@ -134,11 +133,9 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                         loss += loss_1
                     else:
                         loss += loss_2
-                        num_vueltas += 1
                 loss = loss / batch_size
 
                 cummulative_loss += loss
-            print("Hemos dado la vuelta un tanto por uno", num_vueltas/10000, "de veces")
 
             # Aplicamos el learning rate scheduler
             scheduler.step(cummulative_loss)

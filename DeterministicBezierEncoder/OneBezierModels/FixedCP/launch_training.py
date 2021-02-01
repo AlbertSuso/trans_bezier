@@ -37,8 +37,8 @@ num_experiment = args.num_experiment if args.num_experiment is not None else 0
 new_model = args.new_model if args.new_model is not None else True
 
 transformer_encoder = args.transformer_encoder if args.transformer_encoder is not None else True
-num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 4
-num_control_points = args.num_control_points if args.num_control_points is not None else 3
+num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 6
+num_control_points = args.num_control_points if args.num_control_points is not None else 4
 
 batch_size = args.batch_size if args.batch_size is not None else 64
 num_epochs = args.num_epochs if args.num_epochs is not None else 100
@@ -61,6 +61,6 @@ if not new_model:
 optimizer = Adam
 
 train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
-                             num_experiment, lr=learning_rate, cuda=False, debug=True)
+                             num_experiment, lr=learning_rate, cuda=True, debug=True)
 
 print("FINISHED TRAINING WITH EXIT")

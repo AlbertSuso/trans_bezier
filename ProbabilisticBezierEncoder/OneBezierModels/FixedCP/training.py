@@ -13,14 +13,14 @@ def intersection_over_union(predicted, target):
     return torch.sum(predicted * target) / torch.sum((predicted + target) - predicted * target)
 
 def step_decay(cp_covariance, epoch, var_drop=0.5, epochs_drop=8):
-    return cp_covariance * var_drop ** torch.floor(epoch / epochs_drop)
+    return cp_covariance * (var_drop ** torch.floor(torch.tensor([epoch / epochs_drop], device=cp_covariance.device)))
 
 def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
-                                 num_experiment, cp_variance, lr=1e-4, cuda=True, debug=True):
+                                 num_experiment, cp_variance, var_drop, epochs_drop, lr=1e-4, cuda=True, debug=True):
     # torch.autograd.set_detect_anomaly(True)
     print("\n\nTHE TRAINING BEGINS")
-    print("Experiment #{} ---> batch_size={} num_epochs={} learning_rate={} cp_variance={}".format(
-        num_experiment,  batch_size, num_epochs, lr, cp_variance))
+    print("Experiment #{} ---> batch_size={} num_epochs={} learning_rate={} cp_variance={} var_drop={} epochs_drop={}".format(
+        num_experiment,  batch_size, num_epochs, lr, cp_variance, var_drop, epochs_drop))
 
     # basedir = "/data1slow/users/asuso/trans_bezier"
     basedir = "/home/albert/PycharmProjects/trans_bezier"
@@ -43,7 +43,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/"+str(model.num_cp)+"CP_var"+str(cp_variance)+"_exp"+str(num_experiment))
+        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/"+str(model.num_cp)+"CP_var"+str(cp_variance)+"_edrop"+str(epochs_drop)+"_exp"+str(num_experiment))
         counter = 0
 
     # Obtenemos las imagenes del dataset
@@ -73,7 +73,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             control_points, num_cps = model(im)
 
             # Calculamos el mapa de probabilidades asociado a la curva de bezier probabilistica
-            probability_map = probabilistic_map_generator(control_points, num_cps, step_decay(cp_covariances))
+            probability_map = probabilistic_map_generator(control_points, num_cps,
+                                                          step_decay(cp_covariances, epoch, var_drop, epochs_drop))
             reduced_map, _ = torch.max(probability_map, dim=-1)
 
             #Calculamos la loss
@@ -111,7 +112,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 # Ejecutamos el modelo sobre el batch
                 control_points, num_cps = model(im)
 
-                probability_map = probabilistic_map_generator(control_points, num_cps, step_decay(cp_covariances))
+                probability_map = probabilistic_map_generator(control_points, num_cps,
+                                                              step_decay(cp_covariances, epoch, var_drop, epochs_drop))
                 reduced_map, _ = torch.max(probability_map, dim=-1)
                 loss = -torch.sum(reduced_map * im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)))
 
@@ -128,7 +130,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/"+str(model.num_cp)+"CP_var"+str(cp_variance)+"_exp"+str(num_experiment))
+                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/"+str(model.num_cp)+"CP_var"+str(cp_variance)+"_edrop"+str(epochs_drop)+"_exp"+str(num_experiment))
             cummulative_loss = 0
 
             
