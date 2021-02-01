@@ -120,7 +120,7 @@ if __name__ == '__main__':
         cp_means[i, :, 0] = seq[i] // 64
         cp_means[i, :, 1] = seq[i] % 64
 
-    cp_covariance = torch.tensor([[[30, 0], [0, 30]] for i in range(num_cp)], dtype=torch.float32)
+    cp_covariance = torch.tensor([[[0.1, 0], [0, 0.1]] for i in range(num_cp)], dtype=torch.float32)
     cp_covariances = torch.empty((num_cp, batch_size, 2, 2))
     for i in range(batch_size):
         cp_covariances[:, i, :, :] = cp_covariance
@@ -129,7 +129,6 @@ if __name__ == '__main__':
     cp_covariances = cp_covariances.cuda()
     map_maker = ProbabilisticMap(map_sizes=(64, 64, 50)).cuda()
 
-    print("AQUI EMPIEZA DE VERDAD LA PRUEBA")
     t0 = time.time()
     map = map_maker(cp_means, num_cp*torch.ones(batch_size, dtype=torch.long, device='cuda'), cp_covariances)
     max_map, _ = torch.max(map, dim=3)

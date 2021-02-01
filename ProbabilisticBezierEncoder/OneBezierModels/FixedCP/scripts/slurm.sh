@@ -41,7 +41,7 @@ set -- $1
 
 #################
 # Load specific experiment variable
-. DeterministicBezierEncoder/OneBezierModels/FixedCP/scripts/experiments.sh
+. ProbabilisticBezierEncoder/OneBezierModels/FixedCP/scripts/experiments.sh
 
 #################
 # Prepare the experiment to run
