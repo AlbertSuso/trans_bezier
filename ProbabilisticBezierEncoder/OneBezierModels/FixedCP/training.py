@@ -141,7 +141,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Inicialmente, predeciremos 10 imagenes que almacenaremos en tensorboard
             target_images = im_validation[0:200:20]
             predicted_images = torch.zeros_like(target_images)
-            control_points, num_cps = model(target_images, predict_variance=False)
+            control_points, num_cps = model(target_images)
             # Renderizamos las imagenes predichas
             im_seq = bezier(control_points, num_cps, torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
             for i in range(10):
@@ -161,7 +161,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Finalmente, predecimos 490 imagenes mas para calcular IoU y chamfer_distance
             target_images = im_validation[200:10000:20]
             predicted_images = torch.zeros_like(target_images)
-            control_points, num_cps = model(target_images, predict_variance=False)
+            control_points, num_cps = model(target_images)
             # Renderizamos las imagenes predichas
             im_seq = bezier(control_points, num_cps, torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
             for i in range(490):
