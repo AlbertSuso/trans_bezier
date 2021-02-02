@@ -120,7 +120,7 @@ if __name__ == '__main__':
         cp_means[i, :, 0] = seq[i] // 64
         cp_means[i, :, 1] = seq[i] % 64
 
-    cp_covariance = torch.tensor([[[0.1, 0], [0, 0.1]] for i in range(num_cp)], dtype=torch.float32)
+    cp_covariance = torch.tensor([[[0.4, 0], [0, 0.4]] for i in range(num_cp)], dtype=torch.float32)
     cp_covariances = torch.empty((num_cp, batch_size, 2, 2))
     for i in range(batch_size):
         cp_covariances[:, i, :, :] = cp_covariance
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     sum_loss = -torch.sum(im[:, 0] * sum_map / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))
     print("La sum_loss obtenida es", sum_loss)
 
-    for i in range(0):
+    for i in range(5):
         plt.figure()
         plt.subplot(1, 2, 1)
         plt.imshow(im[i, 0].cpu(), cmap='gray')

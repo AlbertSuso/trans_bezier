@@ -8,11 +8,11 @@ from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.training import train_on
 from Utils.feature_extractor import ResNet18
 
 
-dataset_basedir = "/data2fast/users/asuso"
-# dataset_basedir = "/home/albert/PycharmProjects/trans_bezier"
+# dataset_basedir = "/data2fast/users/asuso"
+dataset_basedir = "/home/albert/PycharmProjects/trans_bezier"
 
-state_dict_basedir = "/data1slow/users/asuso/trans_bezier"
-# state_dict_basedir = "/home/albert/PycharmProjects/trans_bezier"
+# state_dict_basedir = "/data1slow/users/asuso/trans_bezier"
+state_dict_basedir = "/home/albert/PycharmProjects/trans_bezier"
 
 """SELECTION OF HYPERPARAMETERS"""
 
@@ -25,6 +25,8 @@ parser.add_argument('-ntl', '--num_transformer_layers', type=int)
 parser.add_argument('-ncp', '--num_control_points', type=int)
 
 parser.add_argument('-cpv', '--cp_variance', type=int)
+parser.add_argument('-vdrop', '--variance_drop', type=float)
+parser.add_argument('-edrop', '--epochs_drop', type=int)
 
 parser.add_argument('-bs', '--batch_size', type=int)
 parser.add_argument('-e', '--num_epochs', type=int)
@@ -43,6 +45,8 @@ num_transformer_layers = args.num_transformer_layers if args.num_transformer_lay
 num_control_points = args.num_control_points if args.num_control_points is not None else 3
 
 cp_variance = args.cp_variance if args.cp_variance is not None else 30
+variance_drop = args.variance_drop if args.variance_drop is not None else 0.5
+epochs_drop = args.epochs_drop if args.epochs_drop is not None else 10
 
 batch_size = args.batch_size if args.batch_size is not None else 64
 num_epochs = args.num_epochs if args.num_epochs is not None else 100
@@ -65,6 +69,7 @@ if not new_model:
 optimizer = Adam
 
 train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
-                             num_experiment, cp_variance, lr=learning_rate, cuda=True, debug=True)
+                             num_experiment, cp_variance, variance_drop, epochs_drop,
+                             lr=learning_rate, cuda=True, debug=True)
 
 print("FINISHED TRAINING WITH EXIT")

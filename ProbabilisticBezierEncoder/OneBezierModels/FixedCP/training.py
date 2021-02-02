@@ -12,11 +12,12 @@ from Utils.probabilistic_map import ProbabilisticMap
 def intersection_over_union(predicted, target):
     return torch.sum(predicted * target) / torch.sum((predicted + target) - predicted * target)
 
-def step_decay(cp_covariance, epoch, var_drop=0.5, epochs_drop=8):
-    return cp_covariance * (var_drop ** torch.floor(torch.tensor([epoch / epochs_drop], device=cp_covariance.device)))
+def step_decay(cp_covariance, epoch, var_drop=0.5, epochs_drop=8, min_var=0.1):
+    return torch.max(min_var, cp_covariance * (var_drop ** torch.floor(torch.tensor([epoch / epochs_drop], device=cp_covariance.device))))
 
 def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
-                                 num_experiment, cp_variance, var_drop, epochs_drop, lr=1e-4, cuda=True, debug=True):
+                                 num_experiment, cp_variance, var_drop, epochs_drop, min_variance,
+                                 lr=1e-4, cuda=True, debug=True):
     # torch.autograd.set_detect_anomaly(True)
     print("\n\nTHE TRAINING BEGINS")
     print("Experiment #{} ---> batch_size={} num_epochs={} learning_rate={} cp_variance={} var_drop={} epochs_drop={}".format(
@@ -74,7 +75,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
             # Calculamos el mapa de probabilidades asociado a la curva de bezier probabilistica
             probability_map = probabilistic_map_generator(control_points, num_cps,
-                                                          step_decay(cp_covariances, epoch, var_drop, epochs_drop))
+                                                          step_decay(cp_covariances, epoch, var_drop, epochs_drop, min_variance))
             reduced_map, _ = torch.max(probability_map, dim=-1)
 
             #Calculamos la loss
@@ -113,7 +114,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 control_points, num_cps = model(im)
 
                 probability_map = probabilistic_map_generator(control_points, num_cps,
-                                                              step_decay(cp_covariances, epoch, var_drop, epochs_drop))
+                                                              step_decay(cp_covariances, epoch, var_drop, epochs_drop, min_variance))
                 reduced_map, _ = torch.max(probability_map, dim=-1)
                 loss = -torch.sum(reduced_map * im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)))
 
