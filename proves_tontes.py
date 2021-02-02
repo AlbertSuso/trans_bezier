@@ -1,12 +1,16 @@
 import torch
 import torch.nn as nn
+import time
 
-batch_size = 5
+a = torch.randint(0, 5, (3, 64, 1, 1))
+b = torch.randint(0, 5, (3, 64, 2, 2))
 
-out = torch.empty((1, 5, 512))
-a = torch.zeros((0, batch_size, 2), dtype=torch.float32)
+c = a*b
 
-layer = nn.Linear(2, 512)
+for i in range(3):
+    for j in range(64):
+        for k in range(2):
+            for s in range(2):
+                assert c[i, j, k, s] == a[i, j, 0, 0] * b[i, j, k, s]
 
-out[50:] = 23
-print(out)
+print(c.shape)

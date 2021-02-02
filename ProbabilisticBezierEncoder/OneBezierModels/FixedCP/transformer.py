@@ -97,9 +97,10 @@ class Transformer(nn.Module):
         self._decoder = TransformerDecoder(self.d_model, num_layers=num_transformer_layers)
 
         self._out_cp = nn.Linear(self.d_model, 2)
+        self._out_variance = nn.Linear(self.d_model, 1)
 
 
-    def forward(self, image_input):
+    def forward(self, image_input, predict_variance=True):
         batch_size = image_input.shape[0]
         memory = self._encoder(image_input)
 
@@ -109,9 +110,9 @@ class Transformer(nn.Module):
         for n in range(self.num_cp):
             # Ejecutamos el decoder para obtener un nuevo punto de control
             output = self._decoder(control_points, memory)
-            output = output[-1]
+            last = output[-1]
 
-            cp = torch.sigmoid(self._out_cp(output)).view(1, batch_size, 2)
+            cp = torch.sigmoid(self._out_cp(last)).view(1, batch_size, 2)
             control_points = torch.cat((control_points, cp), dim=0)
 
         # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size-0.5)x(0, im_size-0.5)
@@ -120,5 +121,8 @@ class Transformer(nn.Module):
         # Calculamos el tensor num_cps (POR IMPLEMENTAR PARA MultiCP !!!!!!!!!!!!!!!!)
         num_cps = self.num_cp*torch.ones(batch_size, dtype=torch.long, device=image_input.device)
 
+        # En caso de ser necesario, predecimos la variancia de los CP de este lote y la devolvemos
+        if predict_variance:
+            return control_points, num_cps, 60*torch.sigmoid(self._out_variance(output)).unsqueeze(-1)
         return control_points, num_cps
 
