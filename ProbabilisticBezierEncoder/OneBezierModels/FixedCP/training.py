@@ -16,7 +16,7 @@ def step_decay(original_cp_variance, epoch, var_drop=0.5, epochs_drop=8, min_var
     return max(min_var, original_cp_variance * (var_drop ** torch.floor(torch.tensor([epoch / epochs_drop]))))
 
 def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
-                                 num_experiment, predict_variance, cp_variance, var_drop, epochs_drop, min_variance,
+                                 num_experiment, cp_variance, var_drop, epochs_drop, min_variance,
                                  lr=1e-4, cuda=True, debug=True):
     # torch.autograd.set_detect_anomaly(True)
     print("\n\nTHE TRAINING BEGINS")
@@ -72,11 +72,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             im = im_training[i:i+batch_size]
 
             # Ejecutamos el modelo sobre el batch
-            if predict_variance:
-                control_points, num_cps, variances = model(im, predict_variance)
-                actual_covariances = variances * cp_covariances
-            else:
-                control_points, num_cps = model(im, predict_variance)
+            control_points, num_cps = model(im)
 
             # Calculamos el mapa de probabilidades asociado a la curva de bezier probabilistica
             probability_map = probabilistic_map_generator(control_points, num_cps, actual_covariances)
@@ -115,11 +111,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 im = im_training[j:j + batch_size]
 
                 # Ejecutamos el modelo sobre el batch
-                if predict_variance:
-                    control_points, num_cps, variances = model(im, predict_variance)
-                    actual_covariances = variances * cp_covariances
-                else:
-                    control_points, num_cps = model(im, predict_variance)
+                control_points, num_cps = model(im)
 
                 probability_map = probabilistic_map_generator(control_points, num_cps, actual_covariances)
                 reduced_map, _ = torch.max(probability_map, dim=-1)

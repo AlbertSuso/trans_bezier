@@ -85,6 +85,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                     loss += loss_1
                 else:
                     loss += loss_2
+
             loss = loss/batch_size
 
             if debug:
@@ -135,6 +136,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                     else:
                         loss += loss_2
                         num_vueltas += 1
+
                 loss = loss / batch_size
 
                 cummulative_loss += loss
@@ -217,6 +219,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Guardamos el error de predicción en tensorboard
             writer.add_scalar("Prediction/IoU", iou_value/500, counter)
             writer.add_scalar("Prediction/Chamfer_distance", chamfer_value / 500, counter)
+            print("La chamfer distance obtenida es", chamfer_value / 500)
             writer.add_scalar("Prediction/Probabilistic_similarity", probabilistic_similarity / 500, counter)
 
         # Volvemos al modo train para la siguiente epoca
