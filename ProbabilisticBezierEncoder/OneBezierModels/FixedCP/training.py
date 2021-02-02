@@ -12,8 +12,8 @@ from Utils.probabilistic_map import ProbabilisticMap
 def intersection_over_union(predicted, target):
     return torch.sum(predicted * target) / torch.sum((predicted + target) - predicted * target)
 
-def step_decay(cp_covariance, epoch, var_drop=0.5, epochs_drop=8, min_var=0.1):
-    return torch.max(min_var, cp_covariance * (var_drop ** torch.floor(torch.tensor([epoch / epochs_drop], device=cp_covariance.device))))
+def step_decay(original_cp_variance, epoch, var_drop=0.5, epochs_drop=8, min_var=0.1):
+    return max(min_var, original_cp_variance * (var_drop ** torch.floor(torch.tensor([epoch / epochs_drop]))))
 
 def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
                                  num_experiment, cp_variance, var_drop, epochs_drop, min_variance,
@@ -28,7 +28,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
     # Inicializamos el generador de mapas probabilisticos y la matriz de covariancias
     probabilistic_map_generator = ProbabilisticMap((model.image_size, model.image_size, 50))
-    cp_covariance = torch.tensor([ [[cp_variance, 0], [0, cp_variance]] for i in range(model.num_cp)], dtype=torch.float32)
+    cp_covariance = torch.tensor([ [[1, 0], [0, 1]] for i in range(model.num_cp)], dtype=torch.float32)
     cp_covariances = torch.empty((model.num_cp, batch_size, 2, 2))
     for i in range(batch_size):
         cp_covariances[:, i, :, :] = cp_covariance
@@ -66,6 +66,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
     for epoch in range(num_epochs):
         print("Beginning epoch number", epoch+1)
+        actual_covariances = cp_covariances * step_decay(cp_variance, epoch, var_drop, epochs_drop, min_variance).to(cp_covariances.device)
         for i in range(0, len(im_training)-batch_size+1, batch_size):
             # Obtenemos el batch
             im = im_training[i:i+batch_size]
@@ -74,8 +75,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             control_points, num_cps = model(im)
 
             # Calculamos el mapa de probabilidades asociado a la curva de bezier probabilistica
-            probability_map = probabilistic_map_generator(control_points, num_cps,
-                                                          step_decay(cp_covariances, epoch, var_drop, epochs_drop, min_variance))
+            probability_map = probabilistic_map_generator(control_points, num_cps, actual_covariances)
             reduced_map, _ = torch.max(probability_map, dim=-1)
 
             #Calculamos la loss
@@ -113,8 +113,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 # Ejecutamos el modelo sobre el batch
                 control_points, num_cps = model(im)
 
-                probability_map = probabilistic_map_generator(control_points, num_cps,
-                                                              step_decay(cp_covariances, epoch, var_drop, epochs_drop, min_variance))
+                probability_map = probabilistic_map_generator(control_points, num_cps, actual_covariances)
                 reduced_map, _ = torch.max(probability_map, dim=-1)
                 loss = -torch.sum(reduced_map * im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)))
 
