@@ -31,7 +31,7 @@ class TransformerDecoder(nn.Module):
         self.d_model = d_model
 
         # la dimensió input es una per cada possible punt de control + 1 per inici de seq
-        self._embedder = nn.Embedding(1+image_size*image_size, d_model)
+        self._embedder = nn.Embedding(2+image_size*image_size, d_model)
         self._positional_encoder = PositionalEncoder(d_model)
 
         # decoder_layer with d_model, nhead, dim_feedforward (implementado tal cual en el paper)
@@ -52,19 +52,20 @@ class TransformerDecoder(nn.Module):
 
         return mask
 
-
-    def forward(self, tgt, memory):
+    def forward(self, tgt, memory, tgt_key_padding_mask):
         # tgt.shape= (seq_len, batch_size, 1)
         x = self._embedder(tgt)
         # x.shape = (seq_len, batch_size, d_model)
         x = self._positional_encoder(x)
-        return self._decoder(x, memory, tgt_mask=self._generate_tgt_mask(tgt.shape[0], device=x.device))
+        return self._decoder(x, memory, tgt_mask=self._generate_tgt_mask(tgt.shape[0], device=x.device),
+                             tgt_key_padding_mask=tgt_key_padding_mask)
 
 class Transformer(nn.Module):
-    def __init__(self, image_size, feature_extractor=ResNet18, num_transformer_layers=6, num_cp=3, transformer_encoder=True):
+    def __init__(self, image_size, feature_extractor=ResNet18, num_transformer_layers=6, num_cp=3, max_beziers=2, transformer_encoder=True):
         super().__init__()
         self.image_size = image_size
         self.num_cp = num_cp
+        self.max_beziers = max_beziers
 
         if transformer_encoder:
             self._encoder = TransformerEncoder(num_layers=num_transformer_layers, feature_extractor=feature_extractor())
@@ -73,9 +74,9 @@ class Transformer(nn.Module):
         self.d_model = self._encoder.d_model
         self._decoder = TransformerDecoder(self.d_model, image_size, num_layers=num_transformer_layers)
 
-        self._out_probabilites = nn.Linear(self.d_model, 1 + image_size*image_size)
+        self._out_probabilites = nn.Linear(self.d_model, 2 + image_size*image_size)
 
-    def forward(self, image_inputs, tgt_seq):
+    def forward(self, image_inputs, tgt_seq, tgt_key_padding_mask):
         # Aplicamos el encoder
         memory = self._encoder(image_inputs)
 
@@ -85,22 +86,27 @@ class Transformer(nn.Module):
         input_tgt_seq[1:] = tgt_seq[:-1]
 
         #Aplicamos el decoder
-        output = self._decoder(input_tgt_seq, memory)
+        output = self._decoder(input_tgt_seq, memory, tgt_key_padding_mask)
         #output.shape = (tgt_seq_len, batch_size, d_model)
 
         # Devolvemos las probabilidades sin pasar por la softmax, porque la cross-entropy loss ya la aplica automáticamente
         return self._out_probabilites(output) #return.shape = (tgt_seq_len, batch_size, num_probabilites)
 
     def predict(self, image_input):
+        """
+        Pensada para batch_size=1
+        """
         memory = self._encoder(image_input)
 
         control_points = []
+
         actual = self.image_size*self.image_size
 
         # Mientras el ganador no sea el que indica que debemos parar la ejecucón
         n = 0
-        while (actual != self.image_size*self.image_size and n < self.num_cp + 1) or n == 0:
+        while actual != self.image_size*self.image_size+1 and n < self.max_beziers*(self.num_cp+1):
             n += 1
+
             control_points.append(actual)
 
             # Ejecutamos el decoder para obtener un nuevo punto de control, o la orden de parada

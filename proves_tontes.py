@@ -1,11 +1,20 @@
 import torch
-import torch.nn as nn
-import time
+from itertools import permutations
 
-a = torch.randint(0, 2, (10,))
-b = a < 1
+perm = permutations(range(3))
+perm = torch.tensor([p for p in perm], dtype=torch.long)
 
-print(a)
-print(b)
-print(torch.sum(b))
+perm_tokens = torch.empty((perm.shape[0], 12))
+for j in range(perm.shape[1]):
+    for k in range(3+1):
+        perm_tokens[:, j*(3+1) + k] = (3+1)*perm[:, j] + k
+
+print(perm_tokens, "\n")
+
+for n in range(perm.shape[1]):
+    perm_tokens[:, n*(3+1):n*(3+1)+3] = perm_tokens[:, n*(3+1):n*(3+1)+3].flip(1)
+
+print(perm_tokens)
+
+
 

@@ -23,6 +23,7 @@ parser.add_argument('-new', '--new_model', type=bool)
 parser.add_argument('-trans_encoder', '--transformer_encoder', type=bool)
 parser.add_argument('-ntl', '--num_transformer_layers', type=int)
 parser.add_argument('-ncp', '--num_control_points', type=int)
+parser.add_argument('-maxb', '--max_beziers', type=int)
 
 parser.add_argument('-bs', '--batch_size', type=int)
 parser.add_argument('-e', '--num_epochs', type=int)
@@ -37,25 +38,27 @@ num_experiment = args.num_experiment if args.num_experiment is not None else 0
 new_model = args.new_model if args.new_model is not None else True
 
 transformer_encoder = args.transformer_encoder if args.transformer_encoder is not None else True
-num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 4
+num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 8
 num_control_points = args.num_control_points if args.num_control_points is not None else 3
+max_beziers = args.max_beziers if args.max_beziers is not None else 2
 
 batch_size = args.batch_size if args.batch_size is not None else 64
-num_epochs = args.num_epochs if args.num_epochs is not None else 100
+num_epochs = args.num_epochs if args.num_epochs is not None else 500
 learning_rate = args.learning_rate if args.learning_rate is not None else 0.00005
 state_dicts_path = args.state_dicts
 
 """LOADING DATASET"""
-images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/fixedCP"+str(num_control_points)))
-sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/fixedCP"+str(num_control_points)))
-dataset = (images, sequences)
+images = torch.load(os.path.join(dataset_basedir, "Datasets/MultiBezierDatasets/Training/images/fixedCP"+str(num_control_points)+"_maxBeziers"+str(max_beziers)))
+sequences = torch.load(os.path.join(dataset_basedir, "Datasets/MultiBezierDatasets/Training/sequences/fixedCP"+str(num_control_points)+"_maxBeziers"+str(max_beziers)))
+padding_masks = torch.load(os.path.join(dataset_basedir, "Datasets/MultiBezierDatasets/Training/padding_masks/fixedCP"+str(num_control_points)+"_maxBeziers"+str(max_beziers)))
+dataset = (images, sequences, padding_masks)
 
 """INSTANTIATION OF THE MODEL"""
 image_size = 64
 model = Transformer(image_size, feature_extractor=ResNet18, num_transformer_layers=num_transformer_layers,
-                    num_cp=num_control_points, transformer_encoder=transformer_encoder)
+                    num_cp=num_control_points, max_beziers=max_beziers, transformer_encoder=transformer_encoder)
 if not new_model:
-    model.load_state_dict(torch.load(state_dict_basedir+"/state_dicts/DeterministicBezierEncoder/OneBezierModels/fixedCP/"+str(model.num_cp)+"CP_exp"+str(num_experiment)))
+    model.load_state_dict(torch.load(state_dict_basedir+"/state_dicts/DeterministicBezierEncoder/MultiBezierModels/fixedCP/"+str(model.num_cp)+"CP_maxBeziers"+str(max_beziers)+"exp"+str(num_experiment)))
 
 """SELECT OPTIMIZATOR AND RUN TRAINING"""
 optimizer = Adam

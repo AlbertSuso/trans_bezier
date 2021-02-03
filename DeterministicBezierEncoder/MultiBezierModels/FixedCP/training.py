@@ -7,6 +7,7 @@ from DeterministicBezierEncoder.MultiBezierModels.FixedCP.dataset_generation imp
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from Utils.chamfer_distance import chamfer_distance
 from Utils.probabilistic_map import ProbabilisticMap
+from itertools import permutations
 
 
 def intersection_over_union(predicted, target):
@@ -22,10 +23,10 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     basedir = "/home/albert/PycharmProjects/trans_bezier"
 
     probabilistic_map_generator = ProbabilisticMap((model.image_size, model.image_size, 50))
-    cp_covariances = torch.tensor([[[3, 0], [0, 3]] for i in range(model.num_cp)], dtype=torch.float32)
-    # cp_covariances = torch.empty((model.num_cp, batch_size, 2, 2))
-    # for i in range(batch_size):
-    #    cp_covariances[:, i, :, :] = cp_covariance
+    cp_covariance = torch.tensor([[[3, 0], [0, 3]] for i in range(model.num_cp)], dtype=torch.float32)
+    cp_covariances = torch.empty((model.num_cp, batch_size, 2, 2))
+    for i in range(batch_size):
+        cp_covariances[:, i, :, :] = cp_covariance
     if cuda:
         probabilistic_map_generator = probabilistic_map_generator.cuda()
         cp_covariances = cp_covariances.cuda()
@@ -38,15 +39,16 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir+"/graphics/DeterministicBezierEncoder/OneBezierModels/FixedCP/"+str(model.num_cp)+"CP_exp"+str(num_experiment))
+        writer = SummaryWriter(basedir+"/graphics/DeterministicBezierEncoder/MultiBezierModels/FixedCP/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"exp"+str(num_experiment))
         counter = 0
 
     # Separamos el dataset en imagenes y secuencias
-    images, sequences = dataset
+    images, sequences, tgt_padding_masks = dataset
     # Enviamos los datos y el modelo a la GPU
     if cuda:
         images = images.cuda()
         sequences = sequences.cuda()
+        tgt_padding_masks = tgt_padding_masks.cuda()
         model = model.cuda()
 
     # Particionamos el dataset en training y validation
@@ -56,6 +58,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     im_validation = images[40000:]
     seq_training = sequences[:, :40000]
     seq_validation = sequences[:, 40000:]
+    tgt_padding_masks_training = tgt_padding_masks[:40000]
+    tgt_padding_masks_validation = tgt_padding_masks[40000:]
 
     # Definimos el optimizer
     optimizer = optimizer(model.parameters(), lr=lr)
@@ -67,24 +71,47 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Obtenemos el batch
             im = im_training[i:i+batch_size]
             seq = seq_training[:, i:i+batch_size]
+            tgt_padding_masks = tgt_padding_masks_training[i:i+batch_size]
 
             # Ejecutamos el modelo sobre el batch
-            probabilities = model(im, seq)
+            probabilities = model(im, seq, tgt_padding_masks)
 
             #probabilities.shape = (tgt_seq_len, batch_size, num_probabilites)
             #seq.shape = (tgt_seq_len, batch_size, 1)
             # Calculamos la loss
             loss = 0
             for k in range(batch_size):
-                loss_1 = F.cross_entropy(probabilities[:, k], seq[:, k])
-                seq_inver = torch.empty_like(seq[:, k])
-                seq_inver[:-1] = seq[:-1, k].flip(0)
-                seq_inver[-1] = seq[-1, k]
-                loss_2 = F.cross_entropy(probabilities[:, k], seq_inver)
-                if loss_1 < loss_2:
-                    loss += loss_1
-                else:
-                    loss += loss_2
+                # Obtenemos el numero de tokens que forman la secuencia
+                num_tokens = tgt_padding_masks.shape[1] - torch.sum(tgt_padding_masks[k])
+
+                # Bajo la suposicion de que cada curva de bezier esta formada por num_cp+1 tokens, calculamos
+                # todas las permutaciones posibles de las curvas
+                perm = permutations(range(num_tokens//(model.num_cp+1)))
+                perm = torch.tensor([p for p in perm], dtype=torch.long)
+
+                # Creamos una "permutacion de tokens" a partir de la "permutacion de curvas de bezier"
+                perm_tokens = torch.empty((perm.shape[0], num_tokens), dtype=torch.long)
+                for j in range(perm.shape[1]):
+                    for s in range(model.num_cp+1):
+                        perm_tokens[:, j*(model.num_cp+1) + s] = (model.num_cp+1)*perm[:, j] + s
+                # Calculamos la permutacion que invierte el orden de los CP de cada curva
+                inverted_perm_tokens = perm_tokens.clone().detach()
+                for n in range(perm.shape[1]):
+                    inverted_perm_tokens[:, n*(3+1):n*(3+1)+3] = perm_tokens[:, n*(3+1):n*(3+1)+3].flip(1)
+
+                lower_loss = float('inf')
+                # Calculamos las loss de cada permutacion y nos quedamos con la mas baja
+                for permutation, inverted_permutation in zip(perm_tokens, inverted_perm_tokens):
+                    # Calculamos la loss asociada a los CP de cada curva sin invertir
+                    actual_loss = F.cross_entropy(probabilities[permutation, k], seq[:num_tokens, k])
+                    if actual_loss < lower_loss:
+                        lower_loss = actual_loss
+                    # Calculamos la loss asociada a los CP de cada curva invertidos
+                    actual_loss = F.cross_entropy(probabilities[inverted_permutation, k], seq[:num_tokens, k])
+                    if actual_loss < lower_loss:
+                        lower_loss = actual_loss
+                loss += lower_loss
+
             loss = loss/batch_size
 
             if debug:
@@ -116,23 +143,48 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             for j in range(0, len(im_validation)-batch_size+1, batch_size):
                 im = im_validation[j:j + batch_size]
                 seq = seq_validation[:, j:j + batch_size]
+                tgt_padding_masks = tgt_padding_masks_validation[j:j + batch_size]
 
                 # Ejecutamos el modelo sobre el batch
-                probabilities = model(im, seq)
+                probabilities = model(im, seq, tgt_padding_masks)
 
-                # probabilies.shape = (tgt_seq_len, batch_size, num_probabilites)
+                # probabilities.shape = (tgt_seq_len, batch_size, num_probabilites)
                 # seq.shape = (tgt_seq_len, batch_size, 1)
+                # Calculamos la loss
                 loss = 0
                 for k in range(batch_size):
-                    loss_1 = F.cross_entropy(probabilities[:, k], seq[:, k])
-                    seq_inver = torch.empty_like(seq[:, k])
-                    seq_inver[:-1] = seq[:-1, k].flip(0)
-                    seq_inver[-1] = seq[-1, k]
-                    loss_2 = F.cross_entropy(probabilities[:, k], seq_inver)
-                    if loss_1 < loss_2:
-                        loss += loss_1
-                    else:
-                        loss += loss_2
+                    # Obtenemos el numero de tokens que forman la secuencia
+                    num_tokens = tgt_padding_masks.shape[1] - torch.sum(tgt_padding_masks[k])
+
+                    # Bajo la suposicion de que cada curva de bezier esta formada por num_cp+1 tokens, calculamos
+                    # todas las permutaciones posibles de las curvas
+                    perm = permutations(range(num_tokens // (model.num_cp + 1)))
+                    perm = torch.tensor([p for p in perm], dtype=torch.long)
+
+                    # Creamos una "permutacion de tokens" a partir de la "permutacion de curvas de bezier"
+                    perm_tokens = torch.empty((perm.shape[0], num_tokens), dtype=torch.long)
+                    for n in range(perm.shape[1]):
+                        for s in range(model.num_cp + 1):
+                            perm_tokens[:, n * (model.num_cp + 1) + s] = (model.num_cp + 1) * perm[:, n] + s
+                    # Calculamos la permutacion que invierte el orden de los CP de cada curva
+                    inverted_perm_tokens = perm_tokens.clone().detach()
+                    for n in range(perm.shape[1]):
+                        inverted_perm_tokens[:, n * (3 + 1):n * (3 + 1) + 3] = perm_tokens[:,
+                                                                               n * (3 + 1):n * (3 + 1) + 3].flip(1)
+
+                    lower_loss = float('inf')
+                    # Calculamos las loss de cada permutacion y nos quedamos con la mas baja
+                    for permutation, inverted_permutation in zip(perm_tokens, inverted_perm_tokens):
+                        # Calculamos la loss asociada a los CP de cada curva sin invertir
+                        actual_loss = F.cross_entropy(probabilities[permutation, k], seq[:num_tokens, k])
+                        if actual_loss < lower_loss:
+                            lower_loss = actual_loss
+                        # Calculamos la loss asociada a los CP de cada curva invertidos
+                        actual_loss = F.cross_entropy(probabilities[inverted_permutation, k], seq[:num_tokens, k])
+                        if actual_loss < lower_loss:
+                            lower_loss = actual_loss
+                    loss += lower_loss
+
                 loss = loss / batch_size
 
                 cummulative_loss += loss
@@ -148,7 +200,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/DeterministicBezierEncoder/OneBezierModels/FixedCP/"+str(model.num_cp)+"CP_exp"+str(num_experiment))
+                torch.save(model.state_dict(), basedir+"/state_dicts/DeterministicBezierEncoder/MultiBezierModels/FixedCP/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"exp"+str(num_experiment))
             cummulative_loss = 0
 
             # Iniciamos la evaluación del modo "predicción"
@@ -163,11 +215,19 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 pred_im = torch.zeros_like(tgt_im)
 
                 control_points = model.predict(tgt_im)
+
                 resolution = 150
-                output = bezier(control_points.unsqueeze(1),
-                                torch.tensor([len(control_points)], dtype=torch.long, device=control_points.device),
-                                torch.linspace(0, 1, resolution, device=control_points.device).unsqueeze(0), device=control_points.device)
-                pred_im[0, 0, output[0, :, 0], output[0, :, 1]] = 1
+                # Separamos los CP en curvas de bezier y las vamos pintando
+                bezier_start = 0
+                for i, cp in enumerate(control_points):
+                    if cp == tgt_im.shape[1]*tgt_im.shape[1]:
+                        output = bezier(control_points[bezier_start:i].unsqueeze(1),
+                                        torch.tensor([i-bezier_start], dtype=torch.long, device=control_points.device),
+                                        torch.linspace(0, 1, resolution, device=control_points.device).unsqueeze(0),
+                                        device=control_points.device)
+                        pred_im[0, 0, output[0, :, 0], output[0, :, 1]] = 1
+
+                        bezier_start = i+1
 
                 iou_value += intersection_over_union(pred_im, tgt_im)
                 chamfer_value += chamfer_distance(pred_im[0].cpu().numpy(), tgt_im[0].cpu().numpy())
@@ -175,7 +235,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 if control_points.shape[0] > 0:
                     probability_map = probabilistic_map_generator(control_points.unsqueeze(1),
                                                                   len(control_points)*torch.ones(1, dtype=torch.long, device=control_points.device),
-                                                                  cp_covariances[:len(control_points)].unsqueeze(1))
+                                                                  cp_covariances)
                     reduced_map, _ = torch.max(probability_map, dim=3)
                     probabilistic_similarity += torch.sum(reduced_map*tgt_im)/torch.sum(tgt_im)
 
@@ -194,12 +254,20 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 pred_im = torch.zeros_like(tgt_im)
 
                 control_points = model.predict(tgt_im)
+
                 resolution = 150
-                output = bezier(control_points.unsqueeze(1),
-                                torch.tensor([len(control_points)], dtype=torch.long, device=control_points.device),
-                                torch.linspace(0, 1, resolution, device=control_points.device).unsqueeze(0),
-                                device=control_points.device)
-                pred_im[0, 0, output[0, :, 0], output[0, :, 1]] = 1
+                # Separamos los CP en curvas de bezier y las vamos pintando
+                bezier_start = 0
+                for i, cp in enumerate(control_points):
+                    if cp == tgt_im.shape[1] * tgt_im.shape[1]:
+                        output = bezier(control_points[bezier_start:i].unsqueeze(1),
+                                        torch.tensor([i - bezier_start], dtype=torch.long,
+                                                     device=control_points.device),
+                                        torch.linspace(0, 1, resolution, device=control_points.device).unsqueeze(0),
+                                        device=control_points.device)
+                        pred_im[0, 0, output[0, :, 0], output[0, :, 1]] = 1
+
+                        bezier_start = i + 1
 
                 iou_value += intersection_over_union(pred_im, tgt_im)
                 chamfer_value += chamfer_distance(pred_im[0].cpu().numpy(), tgt_im[0].cpu().numpy())
@@ -207,7 +275,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 if control_points.shape[0] > 0:
                     probability_map = probabilistic_map_generator(control_points.unsqueeze(1),
                                                                   len(control_points)*torch.ones(1, dtype=torch.long, device=control_points.device),
-                                                                  cp_covariances[:len(control_points)].unsqueeze(1))
+                                                                  cp_covariances)
                     reduced_map, _ = torch.max(probability_map, dim=3)
                     probabilistic_similarity += torch.sum(reduced_map * tgt_im)/torch.sum(tgt_im)
 

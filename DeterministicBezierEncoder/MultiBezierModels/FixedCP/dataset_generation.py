@@ -57,7 +57,7 @@ def generate1bezier(im_size=64, batch_size=64, max_beziers = 2, num_control_poin
     rounded_cp = torch.round(control_points)
     for i, num_bezier in enumerate(num_bezier_curves):
         # Hacemos la padding_mask de esta imagen
-        tgt_padding_mask[i, :num_bezier * (num_control_points + 1) + 1] = False
+        tgt_padding_mask[i, :num_bezier * (num_control_points + 1)] = False
 
         #Hacemos la tgt_seq de esta imagen
         tgt_seq[:num_bezier*(num_control_points+1), i] = im_size * rounded_cp[:num_bezier*(num_control_points+1), i, 0] + rounded_cp[:num_bezier*(num_control_points+1), i, 1]
