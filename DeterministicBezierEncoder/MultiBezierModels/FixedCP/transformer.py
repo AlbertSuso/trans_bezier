@@ -111,7 +111,7 @@ class Transformer(nn.Module):
 
             # Ejecutamos el decoder para obtener un nuevo punto de control, o la orden de parada
             output = self._decoder(torch.tensor(control_points, dtype=torch.long, device=memory.device).view(-1, 1),
-                                   memory)
+                                   memory, None)
             output = output[-1]
 
             probabilities = self._out_probabilites(output).view(-1)

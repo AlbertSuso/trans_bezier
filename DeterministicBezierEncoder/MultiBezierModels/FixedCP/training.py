@@ -220,7 +220,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 # Separamos los CP en curvas de bezier y las vamos pintando
                 bezier_start = 0
                 for i, cp in enumerate(control_points):
-                    if cp == tgt_im.shape[1]*tgt_im.shape[1]:
+                    if cp[0] == tgt_im.shape[1] and cp[1] == 0:
                         output = bezier(control_points[bezier_start:i].unsqueeze(1),
                                         torch.tensor([i-bezier_start], dtype=torch.long, device=control_points.device),
                                         torch.linspace(0, 1, resolution, device=control_points.device).unsqueeze(0),
@@ -259,7 +259,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 # Separamos los CP en curvas de bezier y las vamos pintando
                 bezier_start = 0
                 for i, cp in enumerate(control_points):
-                    if cp == tgt_im.shape[1] * tgt_im.shape[1]:
+                    if cp[0] == tgt_im.shape[1] and cp[1] == 0:
                         output = bezier(control_points[bezier_start:i].unsqueeze(1),
                                         torch.tensor([i - bezier_start], dtype=torch.long,
                                                      device=control_points.device),
