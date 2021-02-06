@@ -20,7 +20,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
         num_experiment,  batch_size, num_epochs, lr))
 
     # basedir = "/data1slow/users/asuso/trans_bezier"
-    basedir = "/home/albert/PycharmProjects/trans_bezier"
+    basedir = "/home/asuso/PycharmProjects/trans_bezier"
 
     probabilistic_map_generator = ProbabilisticMap((model.image_size, model.image_size, 50))
     cp_covariance = torch.tensor([[[3, 0], [0, 3]] for i in range(model.num_cp)], dtype=torch.float32)

@@ -5,9 +5,10 @@ import torch
 from scipy.special import binom
 from torch.utils.data import Dataset
 
+# Bueno, ya estamos en marcha
 
 class OneBezierDataset(Dataset):
-    def __init__(self, basedir="/home/albert/PycharmProjects/transformer_bezier/Datasets", training=True):
+    def __init__(self, basedir="/home/asuso/PycharmProjects/transformer_bezier/Datasets", training=True):
         super().__init__(self)
         if training:
             basedir = os.path.join(basedir, "Training")
@@ -87,11 +88,11 @@ def generate1bezier(im_size=64, batch_size=64, max_beziers = 2, num_control_poin
 
 if __name__ == '__main__':
     # basedir = "/data2fast/users/asuso"
-    basedir = "/home/albert/PycharmProjects/trans_bezier"
+    basedir = "/home/asuso/PycharmProjects/trans_bezier"
 
     t0 = time.time()
     max_beziers = 2
-    for num_cp in [3]:
+    for num_cp in [3, 4, 5, 6]:
         im, seq, tgt_padding_mask = generate1bezier(im_size=64, batch_size=50000, max_beziers=max_beziers, num_control_points=num_cp, device='cuda')
         im = im.to('cpu')
         seq = seq.to('cpu')

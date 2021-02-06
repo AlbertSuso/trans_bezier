@@ -8,7 +8,7 @@ from DeterministicBezierEncoder.MultiBezierModels.FixedCP.dataset_generation imp
 from Utils.chamfer_distance import chamfer_distance
 
 
-basedir = "/home/albert/PycharmProjects/trans_bezier"
+basedir = "/home/asuso/PycharmProjects/trans_bezier"
 image_size = 64
 num_cp = 3
 

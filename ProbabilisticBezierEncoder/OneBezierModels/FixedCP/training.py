@@ -1,6 +1,7 @@
 import torch
 import torchvision
 import numpy as np
+import time
 
 from torch.utils.tensorboard import SummaryWriter
 from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.dataset_generation import bezier
@@ -24,7 +25,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
         num_experiment,  batch_size, num_epochs, lr, cp_variance, var_drop, epochs_drop))
 
     # basedir = "/data1slow/users/asuso/trans_bezier"
-    basedir = "/home/albert/PycharmProjects/trans_bezier"
+    basedir = "/home/asuso/PycharmProjects/trans_bezier"
 
     # Inicializamos el generador de mapas probabilisticos y la matriz de covariancias
     probabilistic_map_generator = ProbabilisticMap((model.image_size, model.image_size, 50))
@@ -65,14 +66,16 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=10**(-0.5), patience=8, min_lr=1e-8)
 
     for epoch in range(num_epochs):
+        t0 = time.time()
         print("Beginning epoch number", epoch+1)
-        actual_covariances = cp_covariances * step_decay(cp_variance, epoch, var_drop, epochs_drop, min_variance).to(cp_covariances.device)
+        # actual_covariances = cp_covariances * step_decay(cp_variance, epoch, var_drop, epochs_drop, min_variance).to(cp_covariances.device)
         for i in range(0, len(im_training)-batch_size+1, batch_size):
             # Obtenemos el batch
             im = im_training[i:i+batch_size]
 
             # Ejecutamos el modelo sobre el batch
-            control_points, num_cps = model(im)
+            control_points, num_cps, variances = model(im)
+            actual_covariances = variances * cp_covariances
 
             # Calculamos el mapa de probabilidades asociado a la curva de bezier probabilistica
             probability_map = probabilistic_map_generator(control_points, num_cps, actual_covariances)
@@ -111,7 +114,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 im = im_training[j:j + batch_size]
 
                 # Ejecutamos el modelo sobre el batch
-                control_points, num_cps = model(im)
+                control_points, num_cps, variances = model(im)
+                actual_covariances = variances * cp_covariances
 
                 probability_map = probabilistic_map_generator(control_points, num_cps, actual_covariances)
                 reduced_map, _ = torch.max(probability_map, dim=-1)
@@ -141,7 +145,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Inicialmente, predeciremos 10 imagenes que almacenaremos en tensorboard
             target_images = im_validation[0:200:20]
             predicted_images = torch.zeros_like(target_images)
-            control_points, num_cps = model(target_images)
+            control_points, num_cps, _ = model(target_images)
             # Renderizamos las imagenes predichas
             im_seq = bezier(control_points, num_cps, torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
             for i in range(10):
@@ -161,7 +165,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Finalmente, predecimos 490 imagenes mas para calcular IoU y chamfer_distance
             target_images = im_validation[200:10000:20]
             predicted_images = torch.zeros_like(target_images)
-            control_points, num_cps = model(target_images)
+            control_points, num_cps, _ = model(target_images)
             # Renderizamos las imagenes predichas
             im_seq = bezier(control_points, num_cps, torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
             for i in range(490):
@@ -176,3 +180,4 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
         # Volvemos al modo train para la siguiente epoca
         model.train()
+        print("Tiempo por epoca de", time.time()-t0)

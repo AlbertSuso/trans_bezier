@@ -97,7 +97,7 @@ class Transformer(nn.Module):
         self._decoder = TransformerDecoder(self.d_model, num_layers=num_transformer_layers)
 
         self._out_cp = nn.Linear(self.d_model, 2)
-        # self._out_variance = nn.Linear(self.d_model, 1)
+        self._out_variance = nn.Linear(self.d_model, 1)
 
 
     def forward(self, image_input):
@@ -122,7 +122,6 @@ class Transformer(nn.Module):
         num_cps = self.num_cp*torch.ones(batch_size, dtype=torch.long, device=image_input.device)
 
         # En caso de ser necesario, predecimos la variancia de los CP de este lote y la devolvemos
-        # if predict_variance:
-        #    return control_points, num_cps, 60*torch.sigmoid(self._out_variance(output)).unsqueeze(-1)
-        return control_points, num_cps
+        return control_points, num_cps, 0.1+torch.relu(self._out_variance(output)).unsqueeze(-1)
+        # return control_points, num_cps
 

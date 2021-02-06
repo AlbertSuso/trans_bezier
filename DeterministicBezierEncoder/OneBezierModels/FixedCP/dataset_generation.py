@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 
 
 class OneBezierDataset(Dataset):
-    def __init__(self, basedir="/home/albert/PycharmProjects/transformer_bezier/Datasets", training=True):
+    def __init__(self, basedir="/home/asuso/PycharmProjects/transformer_bezier/Datasets", training=True):
         super().__init__(self)
         if training:
             basedir = os.path.join(basedir, "Training")
@@ -63,11 +63,11 @@ def generate1bezier(im_size=64, batch_size=64, num_control_points=3, resolution=
 
 if __name__ == '__main__':
     # basedir = "/data2fast/users/asuso"
-    basedir = "/home/albert/PycharmProjects/trans_bezier"
+    basedir = "/home/asuso/PycharmProjects/trans_bezier"
 
     t0 = time.time()
     for num_cp in [3, 4, 5, 6, 7, 8]:
-        im, seq = generate1bezier(batch_size=64, num_control_points=num_cp, device='cuda')
+        im, seq = generate1bezier(batch_size=50000, num_control_points=num_cp, device='cuda')
         im = im.to('cpu')
         seq = seq.to('cpu')
         torch.save(im, basedir+"/Datasets/OneBezierDatasets/Training/images/fixedCP"+str(num_cp))
