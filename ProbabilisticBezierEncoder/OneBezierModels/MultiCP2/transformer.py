@@ -1,13 +1,9 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from Utils.feature_extractor import ResNet18
 from Utils.positional_encoder import PositionalEncoder
-
-"""
-Very simplified model that always produces a fixed number of control points. In consequence, it doesn't generate BOS
-nor EOS flags. It always receives one BOS flag as input in the first position of the sequence.
-"""
 
 
 class Embedder(nn.Module):
@@ -84,44 +80,50 @@ class TransformerDecoder(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, image_size, feature_extractor=ResNet18, num_transformer_layers=6, num_cp=3, transformer_encoder=True):
+    def __init__(self, image_size, feature_extractor=ResNet18, max_cp=3):
         super().__init__()
         self.image_size = image_size
-        self.num_cp = num_cp
+        self.max_cp = max_cp
 
-        if transformer_encoder:
-            self._encoder = TransformerEncoder(num_layers=num_transformer_layers, feature_extractor=feature_extractor())
-        else:
-            self._encoder = feature_extractor()
+        self._encoder = TransformerEncoder(num_layers=5, feature_extractor=feature_extractor())
         self.d_model = self._encoder.d_model
-        self._decoder = TransformerDecoder(self.d_model, num_layers=num_transformer_layers)
+        self._decoders = nn.ModuleList([TransformerDecoder(self.d_model, num_layers=i+3) for i in range(self.max_cp-1)])
 
         self._out_cp = nn.Linear(self.d_model, 2)
-        #self._out_variance = nn.Linear(self.d_model, 1)
+        self._out_probability_ncp = nn.ModuleList([nn.Linear(self.d_model*(2+i), 1) for i in range(self.max_cp-1)])
+        # self._out_variance = nn.Linear(self.d_model, 1)
 
 
     def forward(self, image_input):
         batch_size = image_input.shape[0]
+
+        # Inicializamos el contenedor de control points shape=(num_decoders, max_cp, batch_size, 2)
+        all_control_points = torch.empty((self.max_cp-1, self.max_cp, batch_size, 2), device=image_input.device)
+        # Inicializamos el contenedor de probabilidades (una probabilidad por cada decoder, i.e. por cada numero de puntos de control)
+        probabilities = torch.empty((self.max_cp-1, batch_size), device=image_input.device)
+
+        # Calculamos la memoria
         memory = self._encoder(image_input)
 
-        control_points = torch.zeros((0, batch_size, 2), dtype=torch.float32, device=image_input.device)
+        # Para cada numero de puntos de control, calculamos los puntos de control
+        for i, decoder in enumerate(self._decoders):
+            control_points = torch.zeros((0, batch_size, 2), dtype=torch.float32, device=image_input.device)
 
-        # Generamos self.num_cp puntos de control (ninguno puede ser padding)
-        for n in range(self.num_cp):
-            # Ejecutamos el decoder para obtener un nuevo punto de control
-            output = self._decoder(control_points, memory)
-            last = output[-1]
+            # Generamos 2+i CP (los que tocan para el decoder actual)
+            for n in range(2+i):
+                # Ejecutamos el decoder para obtener un nuevo punto de control
+                output = decoder(control_points, memory)
+                # Obtenemos y almacenamos el nuevo CP
+                last = output[-1]
+                cp = torch.sigmoid(self._out_cp(last)).view(1, batch_size, 2)
+                control_points = torch.cat((control_points, cp), dim=0)
 
-            cp = torch.sigmoid(self._out_cp(last)).view(1, batch_size, 2)
-            control_points = torch.cat((control_points, cp), dim=0)
-
-        # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size-0.5)x(0, im_size-0.5)
-        control_points *= self.image_size-0.5
-
-        # Calculamos el tensor num_cps (POR IMPLEMENTAR PARA MultiCP !!!!!!!!!!!!!!!!)
-        num_cps = self.num_cp*torch.ones(batch_size, dtype=torch.long, device=image_input.device)
+            # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size-0.5)x(0, im_size-0.5) y los almacenamos
+            all_control_points[i, :2+i] = control_points*(self.image_size-0.5)
+            # Predecimos la probabilidad de que la curva determinada por estos puntos de control vaya a ser la utilizada y la almacenamos
+            probabilities[i] = self._out_probability_ncp[i](output.permute(1, 0, 2).reshape(batch_size, -1)).view(-1)
 
         # En caso de ser necesario, predecimos la variancia de los CP de este lote y la devolvemos
         # return control_points, num_cps, 0.1+torch.relu(self._out_variance(output)).unsqueeze(-1)
-        return control_points, num_cps
+        return all_control_points, F.softmax(probabilities, dim=0)
 
