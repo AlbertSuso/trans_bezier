@@ -31,7 +31,7 @@ for i, cp in enumerate(tgt_seq):
 
 pred_im = torch.zeros_like(tgt_im)
 
-control_points = model.predict(tgt_im)
+control_points, _, _ = model(tgt_im)
 print("Los puntos de control predichos son", control_points)
 
 resolution = 150

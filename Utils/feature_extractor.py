@@ -29,15 +29,18 @@ class Block(nn.Module):
 
 
 class ResNet12(nn.Module):
-    ''' In this network the input image is supposed to be 84x84x3 '''
+    ''' ResNet used to predict the number of CP of a bezier curve'''
 
-    def __init__(self, in_chanels=1):
+    def __init__(self, max_cp=6, in_chanels=1):
         super(ResNet12, self).__init__()
+        self.max_cp = max_cp
+
         self.block1 = Block(in_chanels, 32)
         self.block2 = Block(32, 64)
         self.block3 = Block(64, 128)
         self.block4 = Block(128, 256)
-        self.d_model = 256
+        self.fc1 = nn.Linear(256*8*8, 200)
+        self.fc2 = nn.Linear(200, max_cp-1)
 
     def forward(self, input):
         # Input 1x64x64
@@ -48,7 +51,7 @@ class ResNet12(nn.Module):
         x = self.block3(x)
         # Input 128x8x8
         x = self.block4(x, maxpool=False)
-        return x.view(input.shape[0], self.d_model, -1).transpose(1, 2).transpose(0, 1) #La pasamos a la shape adecuada que necesita la transformer
+        return self.fc2(F.relu(self.fc1(x.view(input.shape[0], -1))))
 
 class ResNet18(nn.Module):
     def __init__(self, in_chanels=1):
