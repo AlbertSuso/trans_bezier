@@ -6,7 +6,7 @@ import time
 from torch.utils.tensorboard import SummaryWriter
 from ProbabilisticBezierEncoder.OneBezierModels.MultiCP.dataset_generation import bezier
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from Utils.chamfer_distance import chamfer_distance
+from Utils.chamfer_distance import chamfer_distance, generate_loss_images
 from Utils.probabilistic_map import ProbabilisticMap
 
 
@@ -45,14 +45,17 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_minvar"+str(min_variance)+"_edrop"+str(epochs_drop)+"_exp"+str(num_experiment))
+        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.num_cp)+"CP_decvar_negativeCoef0.1")
         counter = 0
 
     # Obtenemos las imagenes del dataset
     images = dataset
+    # Obtenemos las imagenes para la loss
+    loss_images = generate_loss_images(images, weight=0.1)
     # Enviamos los datos y el modelo a la GPU
     if cuda:
         images = images.cuda()
+        loss_images = loss_images.cuda()
         model = model.cuda()
 
     # Particionamos el dataset en training y validation
@@ -60,6 +63,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     # sequences.shape=(100, N, 2)
     im_training = images[:40000]
     im_validation = images[40000:]
+    loss_im_training = loss_images[:40000]
+    loss_im_validation = loss_images[40000:]
 
     # Definimos el optimizer
     optimizer = optimizer(model.parameters(), lr=lr)
@@ -72,6 +77,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
         for i in range(0, len(im_training)-batch_size+1, batch_size):
             # Obtenemos el batch
             im = im_training[i:i+batch_size]
+            loss_im = loss_im_training[i:i + batch_size]
 
             # Ejecutamos el modelo sobre el batch
             control_points, num_cps = model(im)
@@ -81,7 +87,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             reduced_map, _ = torch.max(probability_map, dim=-1)
 
             #Calculamos la loss
-            loss = -torch.sum(reduced_map * im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)))
+            loss = -torch.sum(reduced_map * loss_im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)))
 
             if debug:
                 cummulative_loss += loss
@@ -110,14 +116,15 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
         with torch.no_grad():
             cummulative_loss = 0
             for j in range(0, len(im_validation)-batch_size+1, batch_size):
-                im = im_training[j:j + batch_size]
+                im = im_validation[j:j + batch_size]
+                loss_im = loss_im_validation[j:j + batch_size]
 
                 # Ejecutamos el modelo sobre el batch
                 control_points, num_cps = model(im)
 
                 probability_map = probabilistic_map_generator(control_points, num_cps, actual_covariances)
                 reduced_map, _ = torch.max(probability_map, dim=-1)
-                loss = -torch.sum(reduced_map * im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)))
+                loss = -torch.sum(reduced_map * loss_im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)))
 
                 cummulative_loss += loss
 
@@ -132,7 +139,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_minvar"+str(min_variance)+"_edrop"+str(epochs_drop)+"_exp"+str(num_experiment))
+                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.num_cp)+"CP_decvar_negativeCoef0.1")
             cummulative_loss = 0
 
             

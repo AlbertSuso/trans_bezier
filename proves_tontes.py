@@ -1,15 +1,15 @@
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
-a = torch.randint(0, 2, (5, 6, 64, 2))
+def foo(tensor):
+    tensor = tensor+1
+    return tensor
 
-b = torch.randint(0, 5, (64,))
+a = torch.ones(5)
 
-out = torch.empty((6, 64, 2))
+b = foo(a)
 
-out
+print(a)
+print(b)
 
-print(a[b].shape)
 
 
