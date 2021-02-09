@@ -40,7 +40,7 @@ args = parser.parse_args()
 num_experiment = args.num_experiment if args.num_experiment is not None else 0
 new_model = args.new_model if args.new_model is not None else True
 
-num_control_points = args.num_control_points if args.num_control_points is not None else 5
+num_control_points = args.num_control_points if args.num_control_points is not None else 3
 
 # predict_variance = args.predict_variance if args.predict_variance is not None else True
 cp_variance = args.cp_variance if args.cp_variance is not None else 30
