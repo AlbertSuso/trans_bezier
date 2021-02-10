@@ -15,7 +15,7 @@ def intersection_over_union(predicted, target):
 
 def step_decay(original_cp_variance, epoch, var_drop=0.5, epochs_drop=5, min_var=0.1):
     if epoch < 2*epochs_drop:
-        return original_cp_variance
+        return torch.tensor([original_cp_variance])
     return max(torch.tensor([min_var]), original_cp_variance * (var_drop ** torch.floor(torch.tensor([(epoch-epochs_drop) / epochs_drop]))))
 
 def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
