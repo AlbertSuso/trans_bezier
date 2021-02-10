@@ -28,11 +28,11 @@ class Block(nn.Module):
         return x
 
 
-class ResNet12(nn.Module):
+class NumCP_predictor(nn.Module):
     ''' ResNet used to predict the number of CP of a bezier curve'''
 
     def __init__(self, max_cp=6, in_chanels=1):
-        super(ResNet12, self).__init__()
+        super(NumCP_predictor, self).__init__()
         self.max_cp = max_cp
 
         self.block1 = Block(in_chanels, 32)
@@ -52,6 +52,29 @@ class ResNet12(nn.Module):
         # Input 128x8x8
         x = self.block4(x, maxpool=False)
         return self.fc2(F.relu(self.fc1(x.view(input.shape[0], -1))))
+
+class ResNet12(nn.Module):
+    ''' ResNet used to predict the number of CP of a bezier curve'''
+
+    def __init__(self, max_cp=6, in_chanels=1):
+        super(ResNet12, self).__init__()
+        self.d_model = 256
+
+        self.block1 = Block(in_chanels, 32)
+        self.block2 = Block(32, 64)
+        self.block3 = Block(64, 128)
+        self.block4 = Block(128, 256)
+
+    def forward(self, input):
+        # Input 1x64x64
+        x = self.block1(input)
+        # Input 32x32x32
+        x = self.block2(x)
+        # Input 64x16x16
+        x = self.block3(x)
+        # Input 128x8x8
+        x = self.block4(x, maxpool=False)
+        return x.view(input.shape[0], self.d_model, -1).permute(2, 0, 1)
 
 class ResNet18(nn.Module):
     def __init__(self, in_chanels=1):
@@ -77,4 +100,4 @@ class ResNet18(nn.Module):
         x = self.block5(x)
         # Input 2x2x256
         x = self.block6(x, maxpool=False)
-        return  x.view(input.shape[0], self.d_model, -1).transpose(1, 2).transpose(0, 1) #La pasamos a la shape adecuada que necesita la transformer # MIRAR PERMUTE!!!
+        return  x.view(input.shape[0], self.d_model, -1).permute(2, 0, 1) #La pasamos a la shape adecuada que necesita la transformer # MIRAR PERMUTE!!!

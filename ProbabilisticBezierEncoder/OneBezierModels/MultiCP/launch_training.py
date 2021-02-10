@@ -6,7 +6,7 @@ from torch.optim import Adam
 from ProbabilisticBezierEncoder.OneBezierModels.MultiCP.transformer import Transformer
 from ProbabilisticBezierEncoder.OneBezierModels.MultiCP.training import train_one_bezier_transformer
 from ProbabilisticBezierEncoder.OneBezierModels.MultiCP.cp_predictor_pretraining import train_cp_predictor
-from Utils.feature_extractor import ResNet18, ResNet12
+from Utils.feature_extractor import ResNet18, NumCP_predictor
 
 
 # dataset_basedir = "/data2fast/users/asuso"
@@ -66,7 +66,7 @@ dataset = images
 
 """PRE-ENTRENAMIENTO DEL PREDICTOR DE NUM_CP"""
 
-cp_predictor = ResNet12(max_cp=num_control_points)
+cp_predictor = NumCP_predictor(max_cp=num_control_points)
 train_cp_predictor(cp_predictor, (images, tgt_padding_masks), lr=1e-3, epochs=7, batch_size=64, cuda=True)
 
 

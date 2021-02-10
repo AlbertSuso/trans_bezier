@@ -9,7 +9,7 @@ case $1 in
 		num_control_points="5"
 		cp_variance="25"
 		variance_drop="0.5"
-		epochs_drop="8"
+		epochs_drop="5"
 		min_variance="0.8"
 		new_model="True"
 		;;
@@ -20,7 +20,7 @@ case $1 in
 		num_control_points="5"
 		cp_variance="25"
 		variance_drop="0.5"
-		epochs_drop="10"
+		epochs_drop="5"
 		min_variance="0.8"
 		new_model="True"
 		;;
@@ -31,7 +31,7 @@ case $1 in
 		num_control_points="5"
 		cp_variance="25"
 		variance_drop="0.5"
-		epochs_drop="10"
+		epochs_drop="5"
 		min_variance="0.8"
 		new_model="True"
 		;;
@@ -42,7 +42,7 @@ case $1 in
 		num_control_points="5"
 		cp_variance="25"
 		variance_drop="0.5"
-		epochs_drop="10"
+		epochs_drop="5"
 		min_variance="0.8"
 		new_model="True"
 		;;

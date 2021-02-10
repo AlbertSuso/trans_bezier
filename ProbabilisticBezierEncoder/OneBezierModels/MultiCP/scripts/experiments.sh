@@ -10,7 +10,7 @@ case $1 in
 		num_transformer_layers="6"
 		cp_variance="25"
 		variance_drop="0.5"
-		epochs_drop="10"
+		epochs_drop="5"
 		min_variance="0.8"
 		new_model="True"
 		;;
@@ -22,7 +22,7 @@ case $1 in
 		num_transformer_layers="6"
 		cp_variance="25"
 		variance_drop="0.5"
-		epochs_drop="10"
+		epochs_drop="5"
 		min_variance="0.8"
 		new_model="True"
 		;;
@@ -34,7 +34,7 @@ case $1 in
 		num_transformer_layers="8"
 		cp_variance="25"
 		variance_drop="0.5"
-		epochs_drop="10"
+		epochs_drop="5"
 		min_variance="0.8"
 		new_model="True"
 		;;
@@ -46,7 +46,7 @@ case $1 in
 		num_transformer_layers="8"
 		cp_variance="25"
 		variance_drop="0.5"
-		epochs_drop="10"
+		epochs_drop="5"
 		min_variance="0.8"
 		new_model="True"
 		;;
