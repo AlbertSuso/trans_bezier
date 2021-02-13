@@ -19,12 +19,12 @@ def step_decay(original_cp_variance, epoch, var_drop=0.5, epochs_drop=5, min_var
     return max(torch.tensor([min_var]), original_cp_variance * (var_drop ** torch.floor(torch.tensor([(epoch-epochs_drop) / epochs_drop]))))
 
 def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
-                                 num_experiment, cp_variance, var_drop, epochs_drop, min_variance,
+                                 num_experiment, cp_variance, var_drop, epochs_drop, min_variance, penalization_coef,
                                  lr=1e-4, cuda=True, debug=True):
     # torch.autograd.set_detect_anomaly(True)
     print("\n\nTHE TRAINING BEGINS")
-    print("Experiment #{} ---> batch_size={} num_epochs={} learning_rate={} cp_variance={} var_drop={} epochs_drop={} min_variance={}".format(
-        num_experiment,  batch_size, num_epochs, lr, cp_variance, var_drop, epochs_drop, min_variance))
+    print("Experiment #{} ---> batch_size={} num_epochs={} learning_rate={} cp_variance={} var_drop={} epochs_drop={} min_variance={} pen_coef={}".format(
+        num_experiment,  batch_size, num_epochs, lr, cp_variance, var_drop, epochs_drop, min_variance, penalization_coef))
 
     # basedir = "/data1slow/users/asuso/trans_bezier"
     basedir = "/home/asuso/PycharmProjects/trans_bezier"
@@ -47,13 +47,13 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_decvar_negativeCoef0.1")
+        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.num_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef))
         counter = 0
 
     # Obtenemos las imagenes del dataset
     images = dataset
     # Obtenemos las imagenes para la loss
-    loss_images = generate_loss_images(images, weight=0.1)
+    loss_images = generate_loss_images(images, weight=penalization_coef)
     # Enviamos los datos y el modelo a la GPU
     if cuda:
         images = images.cuda()
@@ -141,7 +141,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_decvar_negativeCoef0.1")
+                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.num_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef))
             cummulative_loss = 0
 
             

@@ -71,25 +71,53 @@ def generate1bezier(im_size=64, batch_size=64, max_control_points=3, resolution=
 
 
 if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+
+
     # basedir = "/data2fast/users/asuso"
     basedir = "/home/asuso/PycharmProjects/trans_bezier"
 
     t0 = time.time()
     for num_cp in [3, 4, 5, 6]:
-        im, seq, tgt_padding_mask = generate1bezier(batch_size=50000, max_control_points=num_cp, device='cuda')
-        im = im.to('cpu')
-        seq = seq.to('cpu')
-        tgt_padding_mask = tgt_padding_mask.to('cpu')
-        torch.save(im, basedir+"/Datasets/OneBezierDatasets/Training/images/multiCP"+str(num_cp))
-        torch.save(seq, basedir+"/Datasets/OneBezierDatasets/Training/sequences/multiCP"+str(num_cp))
-        torch.save(tgt_padding_mask, basedir+"/Datasets/OneBezierDatasets/Training/padding_masks/multiCP"+str(num_cp))
+        im_t, seq_t, tgt_padding_mask_t = generate1bezier(batch_size=50000, max_control_points=num_cp, device='cuda')
+        im_t = im_t.to('cpu')
+        seq_t = seq_t.to('cpu')
+        tgt_padding_mask_t = tgt_padding_mask_t.to('cpu')
+        torch.save(im_t, basedir+"/Datasets/OneBezierDatasets/Training/images/multiCP"+str(num_cp))
+        torch.save(seq_t, basedir+"/Datasets/OneBezierDatasets/Training/sequences/multiCP"+str(num_cp))
+        torch.save(tgt_padding_mask_t, basedir+"/Datasets/OneBezierDatasets/Training/padding_masks/multiCP"+str(num_cp))
 
-        im, seq, tgt_padding_mask = generate1bezier(batch_size=10000, max_control_points=num_cp, device='cuda')
-        im = im.to('cpu')
-        seq = seq.to('cpu')
-        tgt_padding_mask = tgt_padding_mask.to('cpu')
-        torch.save(im, basedir+"/Datasets/OneBezierDatasets/Test/images/multiCP"+str(num_cp))
-        torch.save(seq, basedir+"/Datasets/OneBezierDatasets/Test/sequences/multiCP"+str(num_cp))
-        torch.save(tgt_padding_mask, basedir+"/Datasets/OneBezierDatasets/Test/padding_masks/multiCP"+str(num_cp))
+        im_v, seq_v, tgt_padding_mask_v = generate1bezier(batch_size=10000, max_control_points=num_cp, device='cuda')
+        im_v = im_v.to('cpu')
+        seq_v = seq_v.to('cpu')
+        tgt_padding_mask_v = tgt_padding_mask_v.to('cpu')
+        torch.save(im_v, basedir+"/Datasets/OneBezierDatasets/Test/images/multiCP"+str(num_cp))
+        torch.save(seq_v, basedir+"/Datasets/OneBezierDatasets/Test/sequences/multiCP"+str(num_cp))
+        torch.save(tgt_padding_mask_v, basedir+"/Datasets/OneBezierDatasets/Test/padding_masks/multiCP"+str(num_cp))
 
     print("En generar tots els datasets hem trigat", time.time()-t0)
+
+    """print("El porcentaje medio de pixeles pintados es de", torch.sum(im_t) / (50000 * 64 * 64))
+
+    idx = 40000
+    for i in range(0, 200, 20):
+        im = im_t[idx + i].unsqueeze(0).cuda()
+        padding_mask = tgt_padding_mask_t[idx + i]
+        num_cp = padding_mask.shape[0]-torch.sum(padding_mask)-1
+        tgt_seq = seq_t[:num_cp, idx + i].cuda()
+
+        tgt_im = torch.empty((3, 64, 64))
+        tgt_im[:] = im[0]
+
+        tgt_control_points = torch.empty((tgt_seq.shape[0], 2))
+        for i, cp in enumerate(tgt_seq):
+            tgt_control_points[i, 0] = cp // 64
+            tgt_control_points[i, 1] = cp % 64
+
+        for cp_tgt in tgt_control_points:
+            tgt_im[:, int(cp_tgt[0]), int(cp_tgt[1])] = 0
+            tgt_im[0, int(cp_tgt[0]), int(cp_tgt[1])] = 1
+
+        plt.imshow(tgt_im.transpose(0, 1).transpose(1, 2))
+        plt.title("Target\n{}".format(tgt_control_points))
+        plt.show()"""

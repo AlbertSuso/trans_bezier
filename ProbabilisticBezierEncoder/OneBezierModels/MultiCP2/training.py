@@ -19,12 +19,12 @@ def step_decay(original_cp_variance, epoch, var_drop=0.5, epochs_drop=5, min_var
     return max(torch.tensor([min_var]), original_cp_variance * (var_drop ** torch.floor(torch.tensor([(epoch-epochs_drop) / epochs_drop]))))
 
 def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
-                                 num_experiment, cp_variance, var_drop, epochs_drop, min_variance,
+                                 num_experiment, cp_variance, var_drop, epochs_drop, min_variance, penalization_coef,
                                  lr=1e-4, cuda=True, debug=True):
     # torch.autograd.set_detect_anomaly(True)
     print("\n\nTHE TRAINING BEGINS")
-    print("Experiment #{} ---> batch_size={} num_epochs={} learning_rate={} cp_variance={} var_drop={} epochs_drop={} min_variance={}".format(
-        num_experiment,  batch_size, num_epochs, lr, cp_variance, var_drop, epochs_drop, min_variance))
+    print("Experiment #{} ---> batch_size={} num_epochs={} learning_rate={} cp_variance={} var_drop={} epochs_drop={} min_variance={} pen_coef={}".format(
+        num_experiment,  batch_size, num_epochs, lr, cp_variance, var_drop, epochs_drop, min_variance, penalization_coef))
 
     # basedir = "/data1slow/users/asuso/trans_bezier"
     basedir = "/home/asuso/PycharmProjects/trans_bezier"
@@ -47,13 +47,13 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_decvar_negativeCoef0.1_secondApproach")
+        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.num_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef)+"secondApproach")
         counter = 0
 
     # Obtenemos las imagenes del dataset
     images = dataset
     # Obtenemos las imagenes para la loss
-    loss_images = generate_loss_images(images, weight=0.1)
+    loss_images = generate_loss_images(images, weight=penalization_coef)
     # Enviamos los datos y el modelo a la GPU
     if cuda:
         images = images.cuda()
@@ -159,13 +159,14 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_decvar_negativeCoef0.1_secondApproach")
+                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.num_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef)+"secondApproach")
             cummulative_loss = 0
 
             
             # Iniciamos la evaluación del modo "predicción"
             iou_value = 0
             chamfer_value = 0
+            prob_num_cps = torch.zeros(model.max_cp-1, device=im_validation.device)
 
             # Inicialmente, predeciremos 10 imagenes que almacenaremos en tensorboard
             target_images = im_validation[0:200:20]
@@ -174,6 +175,12 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Obtenemos los puntos de control con mayor probabilidad
             all_control_points, ncp_probabilities = model(target_images)
             num_cps = torch.argmax(ncp_probabilities, dim=0)
+
+            # Actualizamos la probabilidad de los control points
+            for prob_dist in ncp_probabilities:
+                for i in range(model.max_cp-1):
+                    prob_num_cps[i] += prob_dist[i]
+
             control_points = torch.empty_like(all_control_points[0])
             for sample in range(10):
                 control_points[:, sample, :] = all_control_points[num_cps[sample], :, sample, :]
@@ -201,6 +208,12 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Obtenemos los puntos de control con mayor probabilidad
             all_control_points, ncp_probabilities = model(target_images)
             num_cps = torch.argmax(ncp_probabilities, dim=0)
+
+            # Actualizamos la probabilidad de los control points
+            for prob_dist in ncp_probabilities:
+                for i in range(model.max_cp - 1):
+                    prob_num_cps[i] += prob_dist[i]
+
             control_points = torch.empty_like(all_control_points[0])
             for sample in range(490):
                 control_points[:, sample, :] = all_control_points[num_cps[sample], :, sample, :]
@@ -216,6 +229,9 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Guardamos los resultados en tensorboard
             writer.add_scalar("Prediction/IoU", iou_value / 500, counter)
             writer.add_scalar("Prediction/Chamfer_distance", chamfer_value / 500, counter)
+            prob_num_cps = prob_num_cps.cpu()
+            probabilities = {str(2+i)+"_cp": prob_num_cps[i]/500 for i in range(model.max_cp-1)}
+            writer.add_scalars('num_cp probabilities', probabilities, counter)
 
         # Volvemos al modo train para la siguiente epoca
         model.train()

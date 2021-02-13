@@ -11,6 +11,7 @@ case $1 in
 		variance_drop="0.5"
 		epochs_drop="5"
 		min_variance="0.8"
+		penalization_coef="0.1"
 		new_model="True"
 		;;
 	1)
@@ -22,6 +23,7 @@ case $1 in
 		variance_drop="0.5"
 		epochs_drop="5"
 		min_variance="0.8"
+		penalization_coef="0.1"
 		new_model="True"
 		;;
 	2)
@@ -33,6 +35,7 @@ case $1 in
 		variance_drop="0.5"
 		epochs_drop="5"
 		min_variance="0.8"
+		penalization_coef="0.1"
 		new_model="True"
 		;;
 	3)
@@ -44,6 +47,7 @@ case $1 in
 		variance_drop="0.5"
 		epochs_drop="5"
 		min_variance="0.8"
+		penalization_coef="0.1"
 		new_model="True"
 		;;
 	*)

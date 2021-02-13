@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+import torch
 
 
 def chamfer_distance(prediction, target):
@@ -35,8 +36,9 @@ def chamfer_distance(prediction, target):
 
 
 def generate_loss_images(original_images, weight=0.1):
-    im_size = original_images.shape[-1]
-    images = original_images.view(-1, im_size, im_size)
+    loss_images = original_images.detach().clone()
+    im_size = loss_images.shape[-1]
+    images = loss_images.view(-1, im_size, im_size)
 
     for idx, im in enumerate(images):
         im = im.numpy().astype(np.ubyte)
@@ -45,9 +47,9 @@ def generate_loss_images(original_images, weight=0.1):
         dst_map = cv2.distanceTransform(~im_scaled, distanceType=cv2.DIST_L2, maskSize=3)
         dst_map = weight * dst_map * np.sum(im) / np.sum(dst_map)
 
-        original_images[idx, 0] -= dst_map
+        loss_images[idx, 0] -= torch.from_numpy(dst_map)
 
-    return original_images
+    return loss_images
 
 
 if __name__ == '__main__':

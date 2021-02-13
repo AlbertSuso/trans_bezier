@@ -27,6 +27,7 @@ parser.add_argument('-cpv', '--cp_variance', type=int)
 parser.add_argument('-vdrop', '--variance_drop', type=float)
 parser.add_argument('-edrop', '--epochs_drop', type=int)
 parser.add_argument('-minv', '--min_variance', type=float)
+parser.add_argument('-pcoef', '--penalization_coef', type=float)
 
 parser.add_argument('-bs', '--batch_size', type=int)
 parser.add_argument('-e', '--num_epochs', type=int)
@@ -47,6 +48,7 @@ cp_variance = args.cp_variance if args.cp_variance is not None else 30
 variance_drop = args.variance_drop if args.variance_drop is not None else 0.5
 epochs_drop = args.epochs_drop if args.epochs_drop is not None else 10
 min_variance = args.min_variance if args.min_variance is not None else 0.2
+penalization_coef = args.penalization_coef if args.penalization_coef is not None else 0.1
 
 batch_size = args.batch_size if args.batch_size is not None else 64
 num_epochs = args.num_epochs if args.num_epochs is not None else 100
@@ -70,7 +72,7 @@ if not new_model:
 optimizer = Adam
 
 train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
-                             num_experiment, cp_variance, variance_drop, epochs_drop, min_variance,
+                             num_experiment, cp_variance, variance_drop, epochs_drop, min_variance, penalization_coef,
                              lr=learning_rate, cuda=True, debug=True)
 
 print("FINISHED TRAINING WITH EXIT")
