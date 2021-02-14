@@ -174,12 +174,15 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
             # Obtenemos los puntos de control con mayor probabilidad
             all_control_points, ncp_probabilities = model(target_images)
+            print("Las probabilidades tienen shape", ncp_probabilities.shape)
             num_cps = torch.argmax(ncp_probabilities, dim=0)
+            print("Y tras el argmax se queda en", num_cps.shape)
 
             # Actualizamos la probabilidad de los control points
-            for prob_dist in ncp_probabilities:
-                for i in range(model.max_cp-1):
-                    prob_num_cps[i] += prob_dist[i]
+            print("Las probabilidades para la primera imagen son", ncp_probabilities[:, 0])
+            print("Todas las probabilidades son", ncp_probabilities)
+            for i in range(ncp_probabilities.shape[1]):
+                prob_num_cps += ncp_probabilities[:, i]
 
             control_points = torch.empty_like(all_control_points[0])
             for sample in range(10):
@@ -210,9 +213,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             num_cps = torch.argmax(ncp_probabilities, dim=0)
 
             # Actualizamos la probabilidad de los control points
-            for prob_dist in ncp_probabilities:
-                for i in range(model.max_cp - 1):
-                    prob_num_cps[i] += prob_dist[i]
+            for i in range(ncp_probabilities.shape[1]):
+                prob_num_cps += ncp_probabilities[:, i]
 
             control_points = torch.empty_like(all_control_points[0])
             for sample in range(490):
@@ -232,6 +234,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             prob_num_cps = prob_num_cps.cpu()
             probabilities = {str(2+i)+"_cp": prob_num_cps[i]/500 for i in range(model.max_cp-1)}
             writer.add_scalars('num_cp probabilities', probabilities, counter)
+
+            print("Las probabilidades medias son\n", probabilities)
 
         # Volvemos al modo train para la siguiente epoca
         model.train()
