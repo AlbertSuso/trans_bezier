@@ -47,7 +47,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/"+str(model.num_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef))
+        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/MNIST_"+str(model.num_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef))
         counter = 0
 
     # Obtenemos las imagenes del dataset
@@ -56,16 +56,16 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     loss_images = generate_loss_images(images, weight=penalization_coef)
     # Enviamos los datos y el modelo a la GPU
     if cuda:
-        images = images.cuda()
-        loss_images = loss_images.cuda()
+        # images = images.cuda()
+        # loss_images = loss_images.cuda()
         model = model.cuda()
 
     # Particionamos el dataset en training y validation
     # images.shape=(N, 1, 64, 64)
-    im_training = images[:40000]
-    im_validation = images[40000:]
-    loss_im_training = loss_images[:40000]
-    loss_im_validation = loss_images[40000:]
+    im_training = images[:50000]
+    im_validation = images[50000:]
+    loss_im_training = loss_images[:50000]
+    loss_im_validation = loss_images[50000:]
 
     # Definimos el optimizer
     optimizer = optimizer(model.parameters(), lr=lr)
@@ -77,8 +77,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
         actual_covariances = cp_covariances * step_decay(cp_variance, epoch, var_drop, epochs_drop, min_variance).to(cp_covariances.device)
         for i in range(0, len(im_training)-batch_size+1, batch_size):
             # Obtenemos el batch
-            im = im_training[i:i+batch_size]
-            loss_im = loss_im_training[i:i+batch_size]
+            im = im_training[i:i+batch_size].cuda()
+            loss_im = loss_im_training[i:i+batch_size].cuda()
 
             # Ejecutamos el modelo sobre el batch
             control_points, num_cps = model(im)
@@ -120,8 +120,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             cummulative_loss = 0
             for j in range(0, len(im_validation) - batch_size + 1, batch_size):
                 # Obtenemos el batch
-                im = im_training[i:i+batch_size]
-                loss_im = loss_im_training[i:i+batch_size]
+                im = im_training[i:i+batch_size].cuda()
+                loss_im = loss_im_training[i:i+batch_size].cuda()
 
                 # Ejecutamos el modelo sobre el batch
                 control_points, num_cps = model(im)
@@ -147,7 +147,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/"+str(model.num_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef))
+                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/MNIST_"+str(model.num_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef))
             cummulative_loss = 0
 
             
@@ -156,7 +156,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             chamfer_value = 0
 
             # Inicialmente, predeciremos 10 imagenes que almacenaremos en tensorboard
-            target_images = im_validation[0:200:20]
+            target_images = im_validation[0:200:20].cuda()
             predicted_images = torch.zeros_like(target_images)
             control_points, num_cps = model(target_images)
             # Renderizamos las imagenes predichas
@@ -176,7 +176,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
 
             # Finalmente, predecimos 490 imagenes mas para calcular IoU y chamfer_distance
-            target_images = im_validation[200:10000:20]
+            target_images = im_validation[200:10000:20].cuda()
             predicted_images = torch.zeros_like(target_images)
             control_points, num_cps = model(target_images)
             # Renderizamos las imagenes predichas
