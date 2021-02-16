@@ -47,7 +47,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef))
+        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef)+"_solvedMistake")
         counter = 0
 
     # Obtenemos las imagenes del dataset
@@ -89,7 +89,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             reduced_map, _ = torch.max(probability_map, dim=-1)
 
             #Calculamos la loss
-            loss = -torch.sum(reduced_map * loss_im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)))
+            loss = -torch.sum(reduced_map * loss_im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))
 
             if debug:
                 cummulative_loss += loss
@@ -126,7 +126,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
                 probability_map = probabilistic_map_generator(control_points, num_cps, actual_covariances)
                 reduced_map, _ = torch.max(probability_map, dim=-1)
-                loss = -torch.sum(reduced_map * loss_im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)))
+                loss = -torch.sum(reduced_map * loss_im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))
 
                 cummulative_loss += loss
 
@@ -141,7 +141,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef))
+                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef)+"_solvedMistake")
             cummulative_loss = 0
 
             

@@ -53,8 +53,26 @@ def generate_loss_images(original_images, weight=0.1, distance='l2'):
 
         loss_images[idx, 0] -= torch.from_numpy(dst_map)
 
-
     return loss_images
+
+def generate_distance_images(original_images, distance='l2'):
+    distance_images = torch.empty_like(original_images)
+    im_size = distance_images.shape[-1]
+    images = original_images.view(-1, im_size, im_size)
+
+    for idx, im in enumerate(images):
+        im = im.numpy().astype(np.ubyte)
+        im_scaled = 255 * im
+
+        dst_map = cv2.distanceTransform(~im_scaled, distanceType=cv2.DIST_L2, maskSize=3)
+        if distance == 'quadratic':
+            dst_map = dst_map*dst_map
+        elif distance == 'exp':
+            dst_map = np.exp(dst_map)
+
+        distance_images[idx, 0] = torch.from_numpy(dst_map)
+
+    return distance_images
 
 
 
@@ -65,8 +83,17 @@ if __name__ == '__main__':
     basedir = "/home/asuso/PycharmProjects/trans_bezier"
     images = torch.load(os.path.join(basedir, "Datasets/OneBezierDatasets/Training/images/fixedCP" + str(5)))
 
-    idx1, idx2 = (157, 158)
-    im1 = images[idx1].numpy()
-    im2 = images[idx2].numpy()
+    offset_x = 0
+    offset_y = 0
 
-    print(chamfer_distance(im1, im2))
+    idx = 157
+    im1 = images[idx].numpy()
+
+    for offset_y in [0, 1, 2, 3, 4, 5]:
+        im2 = np.zeros_like(im1)
+        for y in range(64-offset_y):
+            for x in range(64-offset_x):
+                im2[0, y, x] = im1[0, y+offset_y, x+offset_x]
+
+
+        print(chamfer_distance(im1, im2))

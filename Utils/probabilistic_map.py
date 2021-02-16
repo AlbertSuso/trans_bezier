@@ -101,7 +101,7 @@ if __name__ == '__main__':
     import time
     import matplotlib.pyplot as plt
 
-    basedir = "/home/albert/PycharmProjects/trans_bezier/Datasets/OneBezierDatasets/Training"
+    basedir = "/home/asuso/PycharmProjects/trans_bezier/Datasets/OneBezierDatasets/Training"
     images = torch.load(os.path.join(basedir, "images/fixedCP3"))
     sequences = torch.load(os.path.join(basedir, "sequences/fixedCP3"))
 
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         cp_means[i, :, 0] = seq[i] // 64
         cp_means[i, :, 1] = seq[i] % 64
 
-    cp_covariance = torch.tensor([[[0.4, 0], [0, 0.4]] for i in range(num_cp)], dtype=torch.float32)
+    cp_covariance = torch.tensor([[[1, 0], [0, 1]] for i in range(num_cp)], dtype=torch.float32)
     cp_covariances = torch.empty((num_cp, batch_size, 2, 2))
     for i in range(batch_size):
         cp_covariances[:, i, :, :] = cp_covariance
@@ -137,12 +137,16 @@ if __name__ == '__main__':
     max_loss = -torch.sum(im[:, 0] * max_map / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))
     print("La max_loss obtenida es", max_loss)
 
-
-
     sum_loss = -torch.sum(im[:, 0] * sum_map / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))
     print("La sum_loss obtenida es", sum_loss)
 
-    for i in range(5):
+    print("El valor maximo del max_map es", torch.max(max_map))
+    print("El valor minimo del max_map es", torch.min(max_map))
+
+    print(max_map.shape)
+    print(torch.sum(max_map == 0))
+
+    """for i in range(5):
         plt.figure()
         plt.subplot(1, 2, 1)
         plt.imshow(im[i, 0].cpu(), cmap='gray')
@@ -150,4 +154,4 @@ if __name__ == '__main__':
         plt.subplot(1, 2, 2)
         plt.imshow(max_map[i].cpu(), cmap='gray')
         plt.title("Probability distribution")
-        plt.show()
+        plt.show()"""

@@ -58,8 +58,8 @@ learning_rate = args.learning_rate if args.learning_rate is not None else 0.0000
 state_dicts_path = args.state_dicts
 
 """LOADING DATASET"""
-images = torch.load(os.path.join(dataset_basedir, "Datasets/MNIST/thinned_umbral1"))
-#images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/fixedCP"+str(num_control_points)))
+# images = torch.load(os.path.join(dataset_basedir, "Datasets/MNIST/thinned_umbral1"))
+images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/fixedCP"+str(num_control_points)))
 # sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/fixedCP"+str(num_control_points)))
 dataset = images
 
