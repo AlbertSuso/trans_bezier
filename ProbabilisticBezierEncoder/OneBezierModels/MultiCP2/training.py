@@ -47,7 +47,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef)+"secondApproach"+"_solvedMistake")
+        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef)+"secondApproach"+"_solvedMistake2")
         counter = 0
 
     # Obtenemos las imagenes del dataset
@@ -159,7 +159,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef)+"secondApproach"+"_solvedMistake")
+                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef)+"secondApproach"+"_solvedMistake2")
             cummulative_loss = 0
 
             
@@ -174,13 +174,9 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
             # Obtenemos los puntos de control con mayor probabilidad
             all_control_points, ncp_probabilities = model(target_images)
-            print("Las probabilidades tienen shape", ncp_probabilities.shape)
             num_cps = torch.argmax(ncp_probabilities, dim=0)
-            print("Y tras el argmax se queda en", num_cps.shape)
 
             # Actualizamos la probabilidad de los control points
-            print("Las probabilidades para la primera imagen son", ncp_probabilities[:, 0])
-            print("Todas las probabilidades son", ncp_probabilities)
             for i in range(ncp_probabilities.shape[1]):
                 prob_num_cps += ncp_probabilities[:, i]
 
@@ -234,8 +230,6 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             prob_num_cps = prob_num_cps.cpu()
             probabilities = {str(2+i)+"_cp": prob_num_cps[i]/500 for i in range(model.max_cp-1)}
             writer.add_scalars('num_cp probabilities', probabilities, counter)
-
-            print("Las probabilidades medias son\n", probabilities)
 
         # Volvemos al modo train para la siguiente epoca
         model.train()

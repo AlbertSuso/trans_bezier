@@ -28,17 +28,18 @@ class Block(nn.Module):
         return x
 
 
-class NumCP_predictor(nn.Module):
+class NumCP_predictor12(nn.Module):
     ''' ResNet used to predict the number of CP of a bezier curve'''
 
     def __init__(self, max_cp=6, in_chanels=1):
-        super(NumCP_predictor, self).__init__()
+        super(NumCP_predictor12, self).__init__()
         self.max_cp = max_cp
 
         self.block1 = Block(in_chanels, 32)
         self.block2 = Block(32, 64)
         self.block3 = Block(64, 128)
         self.block4 = Block(128, 256)
+
         self.fc1 = nn.Linear(256*8*8, 200)
         self.fc2 = nn.Linear(200, max_cp-1)
 
@@ -54,8 +55,6 @@ class NumCP_predictor(nn.Module):
         return self.fc2(F.relu(self.fc1(x.view(input.shape[0], -1))))
 
 class ResNet12(nn.Module):
-    ''' ResNet used to predict the number of CP of a bezier curve'''
-
     def __init__(self, max_cp=6, in_chanels=1):
         super(ResNet12, self).__init__()
         self.d_model = 256
@@ -75,6 +74,36 @@ class ResNet12(nn.Module):
         # Input 128x8x8
         x = self.block4(x, maxpool=False)
         return x.view(input.shape[0], self.d_model, -1).permute(2, 0, 1)
+
+class NumCP_predictor18(nn.Module):
+    def __init__(self, max_cp=6, in_chanels=1):
+        super(NumCP_predictor18, self).__init__()
+        self.max_cp = max_cp
+
+        self.block1 = Block(in_chanels, 16)
+        self.block2 = Block(16, 32)
+        self.block3 = Block(32, 64)
+        self.block4 = Block(64, 128)
+        self.block5 = Block(128, 256)
+        self.block6 = Block(256, 512)
+
+        self.fc1 = nn.Linear(512 * 2 * 2, 100)
+        self.fc2 = nn.Linear(100, max_cp - 1)
+
+    def forward(self, input):
+        # Input 64x64x1
+        x = self.block1(input)
+        # Input 32x32x16
+        x = self.block2(x)
+        # Input 16x16x32
+        x = self.block3(x)
+        # Input 8x8x64
+        x = self.block4(x)
+        # Input 4x4x128
+        x = self.block5(x)
+        # Input 2x2x256
+        x = self.block6(x, maxpool=False)
+        return self.fc2(F.relu(self.fc1(x.view(input.shape[0], -1))))
 
 class ResNet18(nn.Module):
     def __init__(self, in_chanels=1):

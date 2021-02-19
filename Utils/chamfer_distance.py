@@ -82,18 +82,13 @@ if __name__ == '__main__':
 
     basedir = "/home/asuso/PycharmProjects/trans_bezier"
     images = torch.load(os.path.join(basedir, "Datasets/OneBezierDatasets/Training/images/fixedCP" + str(5)))
+    images = torch.load(os.path.join(basedir, "Datasets/MNIST/thinned_umbral1"))
 
     offset_x = 0
     offset_y = 0
 
     idx = 157
-    im1 = images[idx].numpy()
 
-    for offset_y in [0, 1, 2, 3, 4, 5]:
-        im2 = np.zeros_like(im1)
-        for y in range(64-offset_y):
-            for x in range(64-offset_x):
-                im2[0, y, x] = im1[0, y+offset_y, x+offset_x]
+    im = images[157]
 
-
-        print(chamfer_distance(im1, im2))
+    print(im[0])

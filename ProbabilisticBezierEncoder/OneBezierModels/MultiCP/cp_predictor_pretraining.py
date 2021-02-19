@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 
 from torch.optim import Adam
-from Utils.feature_extractor import ResNet12
+from Utils.feature_extractor import NumCP_predictor12, NumCP_predictor18
 
 def train_cp_predictor(model, dataset, lr=1e-3, epochs=7, batch_size=64, cuda=True):
     images, tgt_padding_masks = dataset
@@ -51,6 +51,9 @@ def train_cp_predictor(model, dataset, lr=1e-3, epochs=7, batch_size=64, cuda=Tr
             optimizer.step()
             model.zero_grad()
 
+        print("EPOCA", epoch+1, "La training loss es", total_loss/40000)
+        print("EPOCA", epoch+1, "La training accuracy es", accuracy/40000)
+
         total_loss = 0
         accuracy = 0
         model.eval()
@@ -68,6 +71,9 @@ def train_cp_predictor(model, dataset, lr=1e-3, epochs=7, batch_size=64, cuda=Tr
 
                 # Actualizamos la accuracy
                 accuracy += torch.sum(torch.argmax(probabilities, dim=-1) == groundtruth)
+
+            print("EPOCA", epoch + 1, "La validation loss es", total_loss / 10000)
+            print("EPOCA", epoch + 1, "La validation accuracy es", accuracy / 10000)
         model.train()
     return model.cpu()
 
@@ -75,8 +81,10 @@ if __name__ =='__main__':
     # dataset_basedir = "/data2fast/users/asuso"
     dataset_basedir = "/home/asuso/PycharmProjects/trans_bezier"
 
-    max_cp = 3
-    model = ResNet12(max_cp=max_cp)
+    max_cp = 5
+    lr = 1e-3
+    epochs = 20
+    batch_size = 64
 
     """LOADING DATASET"""
     images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/multiCP"+str(max_cp)))
@@ -84,9 +92,7 @@ if __name__ =='__main__':
     tgt_padding_masks = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/padding_masks/multiCP"+str(max_cp)))
     dataset = (images, tgt_padding_masks)
 
-    lr = 1e-3
-    epochs = 20
-    batch_size = 64
-
-    train_cp_predictor(model, dataset, lr=lr, epochs=epochs, batch_size=batch_size, cuda=True)
+    for net in [NumCP_predictor12, NumCP_predictor18]:
+        model = net(max_cp=max_cp)
+        train_cp_predictor(model, dataset, lr=lr, epochs=epochs, batch_size=batch_size, cuda=True)
 

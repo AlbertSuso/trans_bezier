@@ -120,8 +120,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             cummulative_loss = 0
             for j in range(0, len(im_validation) - batch_size + 1, batch_size):
                 # Obtenemos el batch
-                im = im_training[j:j+batch_size].cuda()
-                loss_im = loss_im_training[j:j+batch_size].cuda()
+                im = im_validation[j:j+batch_size].cuda()
+                loss_im = loss_im_validation[j:j+batch_size].cuda()
 
                 # Ejecutamos el modelo sobre el batch
                 control_points, num_cps = model(im)

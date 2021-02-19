@@ -44,10 +44,10 @@ new_model = args.new_model if args.new_model is not None else True
 num_control_points = args.num_control_points if args.num_control_points is not None else 3
 
 # predict_variance = args.predict_variance if args.predict_variance is not None else True
-cp_variance = args.cp_variance if args.cp_variance is not None else 30
+cp_variance = args.cp_variance if args.cp_variance is not None else 25
 variance_drop = args.variance_drop if args.variance_drop is not None else 0.5
-epochs_drop = args.epochs_drop if args.epochs_drop is not None else 10
-min_variance = args.min_variance if args.min_variance is not None else 0.2
+epochs_drop = args.epochs_drop if args.epochs_drop is not None else 5
+min_variance = args.min_variance if args.min_variance is not None else 1
 penalization_coef = args.penalization_coef if args.penalization_coef is not None else 0.1
 
 batch_size = args.batch_size if args.batch_size is not None else 64

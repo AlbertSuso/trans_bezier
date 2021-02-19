@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from Utils.feature_extractor import ResNet18
+from Utils.feature_extractor import ResNet18, NumCP_predictor12, NumCP_predictor18
 from Utils.positional_encoder import PositionalEncoder
 
 
@@ -85,12 +85,13 @@ class Transformer(nn.Module):
         self.image_size = image_size
         self.max_cp = max_cp
 
+        self._num_cp_predictor = NumCP_predictor12(max_cp=max_cp)
+
         self._encoder = TransformerEncoder(num_layers=5, feature_extractor=feature_extractor())
         self.d_model = self._encoder.d_model
         self._decoders = nn.ModuleList([TransformerDecoder(self.d_model, num_layers=i+3) for i in range(self.max_cp-1)])
 
         self._out_cp = nn.Linear(self.d_model, 2)
-        self._out_probability_ncp = nn.ModuleList([nn.Linear(self.d_model*(2+i), 1) for i in range(self.max_cp-1)])
         # self._out_variance = nn.Linear(self.d_model, 1)
 
 
@@ -99,8 +100,6 @@ class Transformer(nn.Module):
 
         # Inicializamos el contenedor de control points shape=(num_decoders, max_cp, batch_size, 2)
         all_control_points = torch.empty((self.max_cp-1, self.max_cp, batch_size, 2), device=image_input.device)
-        # Inicializamos el contenedor de probabilidades (una probabilidad por cada decoder, i.e. por cada numero de puntos de control)
-        probabilities = torch.empty((self.max_cp-1, batch_size), device=image_input.device)
 
         # Calculamos la memoria
         memory = self._encoder(image_input)
@@ -120,10 +119,8 @@ class Transformer(nn.Module):
 
             # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size-0.5)x(0, im_size-0.5) y los almacenamos
             all_control_points[i, :2+i] = control_points*(self.image_size-0.5)
-            # Predecimos la probabilidad de que la curva determinada por estos puntos de control vaya a ser la utilizada y la almacenamos
-            probabilities[i] = self._out_probability_ncp[i](output.permute(1, 0, 2).reshape(batch_size, -1)).view(-1)
 
         # En caso de ser necesario, predecimos la variancia de los CP de este lote y la devolvemos
         # return control_points, num_cps, 0.1+torch.relu(self._out_variance(output)).unsqueeze(-1)
-        return all_control_points, F.softmax(probabilities, dim=0)
+        return all_control_points, F.softmax(self._num_cp_predictor(image_input), dim=1).permute(1, 0)
 
