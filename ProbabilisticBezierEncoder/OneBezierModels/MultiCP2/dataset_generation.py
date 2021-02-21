@@ -40,7 +40,7 @@ def bezier(CP, num_cps, t, device='cuda'):
         pot = (num_cps-1-i).unsqueeze(1)
         pot[pot < 0] = 0
         output = output + (binomial_coefs[i].unsqueeze(1) * t**i * t_inv**pot).unsqueeze(-1) * P.unsqueeze(1)
-    return torch.round(output).long()
+    return output
 
 def generate1bezier(im_size=64, batch_size=64, max_control_points=3, resolution=150, device='cuda'):
     images = torch.zeros((batch_size, 1, im_size, im_size), dtype=torch.float32, device=device)
@@ -62,6 +62,7 @@ def generate1bezier(im_size=64, batch_size=64, max_control_points=3, resolution=
         tgt_padding_mask[i, :num_cp+1] = False
 
     output = bezier(control_points, num_cps, torch.linspace(0, 1, resolution, device=device).unsqueeze(0), device=device)
+    output = torch.round(output).long()
 
     for i in range(batch_size):
         images[i, 0, output[i, :, 0], output[i, :, 1]] = 1

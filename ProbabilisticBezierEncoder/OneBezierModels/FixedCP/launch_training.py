@@ -23,6 +23,13 @@ parser.add_argument('-new', '--new_model', type=bool)
 parser.add_argument('-ntl', '--num_transformer_layers', type=int)
 parser.add_argument('-ncp', '--num_control_points', type=int)
 
+parser.add_argument('-bs', '--batch_size', type=int)
+parser.add_argument('-e', '--num_epochs', type=int)
+parser.add_argument('-lr', '--learning_rate', type=float)
+
+parser.add_argument('-ltype', '--loss_type', type=str)
+parser.add_argument('-dtype', '--distance_type', type=str)
+
 # parser.add_argument('-pred_var', '--predict_variance', type=bool)
 parser.add_argument('-cpv', '--cp_variance', type=int)
 parser.add_argument('-vdrop', '--variance_drop', type=float)
@@ -30,20 +37,21 @@ parser.add_argument('-edrop', '--epochs_drop', type=int)
 parser.add_argument('-minv', '--min_variance', type=float)
 parser.add_argument('-pcoef', '--penalization_coef', type=float)
 
-parser.add_argument('-bs', '--batch_size', type=int)
-parser.add_argument('-e', '--num_epochs', type=int)
-parser.add_argument('-lr', '--learning_rate', type=float)
-
-# Para proseguir un entrenamiento ya iniciado. Falta implementar el resto.
-parser.add_argument('-sd', '--state_dicts', type=str)
 
 args = parser.parse_args()
 
 num_experiment = args.num_experiment if args.num_experiment is not None else 0
 new_model = args.new_model if args.new_model is not None else True
 
-num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 8
-num_control_points = args.num_control_points if args.num_control_points is not None else 6
+num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 5
+num_control_points = args.num_control_points if args.num_control_points is not None else 5
+
+batch_size = args.batch_size if args.batch_size is not None else 64
+num_epochs = args.num_epochs if args.num_epochs is not None else 200
+learning_rate = args.learning_rate if args.learning_rate is not None else 0.00005
+
+loss_type = args.loss_type if args.loss_type is not None else 'pmap'
+distance_type = args.distance_type if args.distance_type is not None else 'l2'
 
 # predict_variance = args.predict_variance if args.predict_variance is not None else True
 cp_variance = args.cp_variance if args.cp_variance is not None else 25
@@ -51,11 +59,6 @@ variance_drop = args.variance_drop if args.variance_drop is not None else 0.5
 epochs_drop = args.epochs_drop if args.epochs_drop is not None else 5
 min_variance = args.min_variance if args.min_variance is not None else 0.8
 penalization_coef = args.penalization_coef if args.penalization_coef is not None else 0.1
-
-batch_size = args.batch_size if args.batch_size is not None else 64
-num_epochs = args.num_epochs if args.num_epochs is not None else 200
-learning_rate = args.learning_rate if args.learning_rate is not None else 0.00005
-state_dicts_path = args.state_dicts
 
 """LOADING DATASET"""
 # images = torch.load(os.path.join(dataset_basedir, "Datasets/MNIST/thinned_umbral1"))
@@ -73,7 +76,10 @@ if not new_model:
 """SELECT OPTIMIZATOR AND RUN TRAINING"""
 optimizer = Adam
 
-train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer,
+"""SELECT LOSS AND LOSS_DISTANCE"""
+loss_mode = (loss_type, distance_type)
+
+train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer, loss_mode,
                              num_experiment, cp_variance, variance_drop, epochs_drop, min_variance, penalization_coef,
                              lr=learning_rate, cuda=True, debug=True)
 

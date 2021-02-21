@@ -86,10 +86,9 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
             # Calculamos el mapa de probabilidades asociado a la curva de bezier probabilistica
             probability_map = probabilistic_map_generator(control_points, num_cps, actual_covariances)
-            reduced_map, _ = torch.max(probability_map, dim=-1)
 
             #Calculamos la loss
-            loss = -torch.sum(reduced_map * loss_im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))
+            loss = -torch.sum(probability_map * loss_im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))
 
             if debug:
                 cummulative_loss += loss
@@ -125,8 +124,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 control_points, num_cps = model(im)
 
                 probability_map = probabilistic_map_generator(control_points, num_cps, actual_covariances)
-                reduced_map, _ = torch.max(probability_map, dim=-1)
-                loss = -torch.sum(reduced_map * loss_im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))
+                loss = -torch.sum(probability_map * loss_im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))
 
                 cummulative_loss += loss
 
@@ -155,6 +153,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             control_points, num_cps = model(target_images)
             # Renderizamos las imagenes predichas
             im_seq = bezier(control_points, num_cps, torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
+            im_seq = torch.round(im_seq).long()
             for i in range(10):
                 predicted_images[i, 0, im_seq[i, :, 0], im_seq[i, :, 1]] = 1
 
@@ -175,6 +174,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             control_points, num_cps = model(target_images)
             # Renderizamos las imagenes predichas
             im_seq = bezier(control_points, num_cps, torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
+            im_seq = torch.round(im_seq).long()
             for i in range(490):
                 predicted_images[i, 0, im_seq[i, :, 0], im_seq[i, :, 1]] = 1
             # Calculamos metricas

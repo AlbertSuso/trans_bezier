@@ -6,8 +6,13 @@ case $1 in
 		batch_size="64"
 		num_epochs="500"
 		learning_rate="0.00005"
+
 		num_control_points="5"
 		num_transformer_layers="5"
+
+		loss_type="pmap"
+		distance_type="l2"
+
 		cp_variance="25"
 		variance_drop="0.5"
 		epochs_drop="5"
@@ -19,8 +24,13 @@ case $1 in
 		batch_size="64"
 		num_epochs="500"
 		learning_rate="0.00005"
+
 		num_control_points="3"
 		num_transformer_layers="6"
+
+		loss_type="pmap"
+		distance_type="l2"
+
 		cp_variance="25"
 		variance_drop="0.5"
 		epochs_drop="5"
@@ -32,8 +42,13 @@ case $1 in
 		batch_size="64"
 		num_epochs="500"
 		learning_rate="0.00005"
+
 		num_control_points="5"
 		num_transformer_layers="8"
+
+		loss_type="pmap"
+		distance_type="l2"
+
 		cp_variance="25"
 		variance_drop="0.5"
 		epochs_drop="5"
@@ -45,8 +60,13 @@ case $1 in
 		batch_size="64"
 		num_epochs="500"
 		learning_rate="0.00005"
+
 		num_control_points="5"
 		num_transformer_layers="8"
+
+		loss_type="pmap"
+		distance_type="l2"
+
 		cp_variance="25"
 		variance_drop="0.5"
 		epochs_drop="5"

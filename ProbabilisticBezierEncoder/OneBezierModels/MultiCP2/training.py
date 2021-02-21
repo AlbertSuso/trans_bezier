@@ -90,10 +90,9 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             for n, cps in enumerate(control_points):
                 # Calculamos el mapa de probabilidades asociado a la curva de bezier probabilistica determinada por los n+2 puntos de control "cps"
                 probability_map = probabilistic_map_generator(cps, (n+2)*torch.ones((batch_size,), dtype=torch.long, device=cps.device), actual_covariances)
-                reduced_map, _ = torch.max(probability_map, dim=-1)
 
                 #Actualizamos la loss
-                loss += ncp_probabilities[n].view(-1, 1, 1)*reduced_map
+                loss += probability_map + ncp_probabilities[n].view(-1, 1, 1)*(probability_map.detach())
                 # loss += -ncp_probabilities[n]*torch.sum(reduced_map * im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)))
             loss = -torch.sum(loss * loss_im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))
 
@@ -139,10 +138,9 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                                                                   (n + 2) * torch.ones((batch_size,), dtype=torch.long,
                                                                                        device=cps.device),
                                                                   actual_covariances)
-                    reduced_map, _ = torch.max(probability_map, dim=-1)
 
                     # Actualizamos la loss
-                    loss += ncp_probabilities[n].view(-1, 1, 1) * reduced_map
+                    loss += probability_map + ncp_probabilities[n].view(-1, 1, 1)*(probability_map.detach())
                     # loss += -ncp_probabilities[n]*torch.sum(reduced_map * im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)))
                 loss = -torch.sum(loss * loss_im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))
 
@@ -186,6 +184,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
             # Renderizamos las imagenes predichas
             im_seq = bezier(control_points, num_cps+2, torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
+            im_seq = torch.round(im_seq).long()
             for i in range(10):
                 predicted_images[i, 0, im_seq[i, :, 0], im_seq[i, :, 1]] = 1
 
@@ -218,6 +217,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
             # Renderizamos las imagenes predichas
             im_seq = bezier(control_points, num_cps+2, torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
+            im_seq = torch.round(im_seq).long()
             for i in range(490):
                 predicted_images[i, 0, im_seq[i, :, 0], im_seq[i, :, 1]] = 1
             # Calculamos metricas

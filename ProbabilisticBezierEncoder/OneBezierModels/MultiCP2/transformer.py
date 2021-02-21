@@ -120,7 +120,5 @@ class Transformer(nn.Module):
             # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size-0.5)x(0, im_size-0.5) y los almacenamos
             all_control_points[i, :2+i] = control_points*(self.image_size-0.5)
 
-        # En caso de ser necesario, predecimos la variancia de los CP de este lote y la devolvemos
-        # return control_points, num_cps, 0.1+torch.relu(self._out_variance(output)).unsqueeze(-1)
         return all_control_points, F.softmax(self._num_cp_predictor(image_input), dim=1).permute(1, 0)
 

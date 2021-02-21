@@ -61,8 +61,8 @@ class ProbabilisticMap(nn.Module):
         Devuelve un batch de mapas 3D de shape (64, 64, temporal_size), siendo cada slice (64, 64, t)
         la distribucion de probabilidades de la curva de bezier en tiempo t.
 
-        mean.shape = (batch_size, 2) (2=cp_size)
-        cov.shape = (batch_size, 2, 2)
+        mean.shape = (batch_size, temporal_size, 2) (2=cp_size)
+        cov.shape = (batch_size, temporal_size, 2, 2)
         """
         # TODOS LOS UNSQUEEZE SON PARA QUE LAS DIMENSIONES CUADREN Y SE PUEDAN VECTORIZAR LAS OPERACIONES
         # Esto es debido a que p.shape=(1, 64, 64, 2). Por tanto las 3 primeras componentes de cada tensor son
@@ -70,7 +70,7 @@ class ProbabilisticMap(nn.Module):
         # sobre las dos ultimas componentes, y acabar obteniendo un mapa con map.shape=(batch_size, 64, 64)
         mean = mean.unsqueeze(1).unsqueeze(1)
         cov_inv = torch.inverse(covariance).unsqueeze(1).unsqueeze(1)
-        divisor = torch.sqrt((2 * np.pi) ** 2 * torch.det(covariance)).unsqueeze(1).unsqueeze(1)
+        divisor = 2 * np.pi * torch.sqrt(torch.det(covariance)).unsqueeze(1).unsqueeze(1)
 
         up = torch.matmul(self.positions.unsqueeze(-2) - mean.unsqueeze(-2), cov_inv)
         up = torch.matmul(up, self.positions.unsqueeze(-1) - mean.unsqueeze(-1))
@@ -78,7 +78,7 @@ class ProbabilisticMap(nn.Module):
         return up[:, :, :, :, 0, 0]/divisor
 
 
-    def forward(self, cp_means, num_cps, cp_covariances):
+    def forward(self, cp_means, num_cps, cp_covariances, mode="p"):
         """
         A partir de las medias de los puntos de control y sus matrices de covariancias, genera un batch de mapas
         probabilisticos de tamaño (batch_size, image_height, image_width, temporal_size).
@@ -93,7 +93,25 @@ class ProbabilisticMap(nn.Module):
         """
         mean, covariance = self._normal_dist_parameters(torch.linspace(0, 1, self._map_temporalSize, device=cp_means.device),
                                                         cp_means, num_cps, cp_covariances)
-        return self._normal2d(mean, covariance)
+        probability_map = self._normal2d(mean, covariance)
+
+        reduced_map, max_idxs = torch.max(probability_map, dim=-1)
+
+        if mode == 'p':
+            return reduced_map
+        elif mode == 'd':
+            # Creamos un array variances de shape variances.shape=(batch_size, 64, 64) tal que variances[i, y, x] es la variancia de la distribución normal que sigue el punto (y, x)
+            # del mapa probabilistico reducido
+            variances = torch.empty((batch_size, self._map_height, self._map_width), device=cp_means.device)
+            for i in range(batch_size):
+                variances[i] = covariance[i, max_idxs[i], 0, 0]
+
+            distance_map = torch.sqrt(-2*variances*torch.log(2*np.pi*variances*reduced_map))
+            distance_map[distance_map.isinf()] = -1
+            distance_map[distance_map == -1] = torch.max(distance_map)
+            return distance_map
+        else:
+            raise IndexError
 
 
 if __name__ == '__main__':
@@ -105,8 +123,10 @@ if __name__ == '__main__':
     images = torch.load(os.path.join(basedir, "images/fixedCP3"))
     sequences = torch.load(os.path.join(basedir, "sequences/fixedCP3"))
 
-    batch_size = 64
-    idx = 170
+    map_maker = ProbabilisticMap(map_sizes=(64, 64, 50)).cuda()
+
+    batch_size = 1
+    idx = 185
     im = images[idx:idx+batch_size].cuda()
     seq = sequences[:-1, idx:idx+batch_size]
 
@@ -115,7 +135,6 @@ if __name__ == '__main__':
     num_cp = 3
 
     cp_means = torch.empty((num_cp, batch_size, 2))
-
     for i in range(num_cp):
         cp_means[i, :, 0] = seq[i] // 64
         cp_means[i, :, 1] = seq[i] % 64
@@ -127,11 +146,19 @@ if __name__ == '__main__':
 
     cp_means = cp_means.cuda()
     cp_covariances = cp_covariances.cuda()
-    map_maker = ProbabilisticMap(map_sizes=(64, 64, 50)).cuda()
 
     t0 = time.time()
-    map = map_maker(cp_means, num_cp*torch.ones(batch_size, dtype=torch.long, device='cuda'), cp_covariances)
-    max_map, _ = torch.max(map, dim=3)
+    map = map_maker(cp_means, num_cp*torch.ones(batch_size, dtype=torch.long, device='cuda'), cp_covariances, mode='d')
+    print("Proporción de infs en el mapa es", torch.sum(torch.isinf(map))/(64*64))
+    map[torch.isinf(map)] = 0
+
+    plt.imshow(map[0].cpu(), cmap='gray')
+    plt.show()
+
+
+
+
+    """max_map, _ = torch.max(map, dim=3)
     sum_map = torch.sum(map, dim=3)
 
     max_loss = -torch.sum(im[:, 0] * max_map / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))
@@ -146,7 +173,7 @@ if __name__ == '__main__':
     print(max_map.shape)
     print(torch.sum(max_map == 0))
 
-    """for i in range(5):
+    for i in range(5):
         plt.figure()
         plt.subplot(1, 2, 1)
         plt.imshow(im[i, 0].cpu(), cmap='gray')
