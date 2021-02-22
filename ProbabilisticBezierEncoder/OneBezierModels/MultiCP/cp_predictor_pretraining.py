@@ -87,9 +87,9 @@ if __name__ =='__main__':
     batch_size = 64
 
     """LOADING DATASET"""
-    images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/multiCP"+str(max_cp)))
-    sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/multiCP"+str(max_cp)))
-    tgt_padding_masks = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/padding_masks/multiCP"+str(max_cp)))
+    images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/multiCP"+str(max_cp)+"_larger"))
+    sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/multiCP"+str(max_cp)+"_larger"))
+    tgt_padding_masks = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/padding_masks/multiCP"+str(max_cp)+"_larger"))
     dataset = (images, tgt_padding_masks)
 
     for net in [NumCP_predictor12, NumCP_predictor18]:

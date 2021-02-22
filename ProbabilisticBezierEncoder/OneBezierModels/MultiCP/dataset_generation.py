@@ -79,22 +79,22 @@ if __name__ == '__main__':
     basedir = "/home/asuso/PycharmProjects/trans_bezier"
 
     t0 = time.time()
-    for num_cp in [3, 4, 5, 6]:
-        im_t, seq_t, tgt_padding_mask_t = generate1bezier(batch_size=50000, max_control_points=num_cp, device='cuda')
+    for num_cp in [5]:
+        im_t, seq_t, tgt_padding_mask_t = generate1bezier(batch_size=100000, max_control_points=num_cp, device='cuda')
         im_t = im_t.to('cpu')
         seq_t = seq_t.to('cpu')
         tgt_padding_mask_t = tgt_padding_mask_t.to('cpu')
-        torch.save(im_t, basedir+"/Datasets/OneBezierDatasets/Training/images/multiCP"+str(num_cp))
-        torch.save(seq_t, basedir+"/Datasets/OneBezierDatasets/Training/sequences/multiCP"+str(num_cp))
-        torch.save(tgt_padding_mask_t, basedir+"/Datasets/OneBezierDatasets/Training/padding_masks/multiCP"+str(num_cp))
+        torch.save(im_t, basedir+"/Datasets/OneBezierDatasets/Training/images/multiCP"+str(num_cp)+"_larger")
+        torch.save(seq_t, basedir+"/Datasets/OneBezierDatasets/Training/sequences/multiCP"+str(num_cp)+"_larger")
+        torch.save(tgt_padding_mask_t, basedir+"/Datasets/OneBezierDatasets/Training/padding_masks/multiCP"+str(num_cp)+"_larger")
 
-        im_v, seq_v, tgt_padding_mask_v = generate1bezier(batch_size=10000, max_control_points=num_cp, device='cuda')
+        im_v, seq_v, tgt_padding_mask_v = generate1bezier(batch_size=20000, max_control_points=num_cp, device='cuda')
         im_v = im_v.to('cpu')
         seq_v = seq_v.to('cpu')
         tgt_padding_mask_v = tgt_padding_mask_v.to('cpu')
-        torch.save(im_v, basedir+"/Datasets/OneBezierDatasets/Test/images/multiCP"+str(num_cp))
-        torch.save(seq_v, basedir+"/Datasets/OneBezierDatasets/Test/sequences/multiCP"+str(num_cp))
-        torch.save(tgt_padding_mask_v, basedir+"/Datasets/OneBezierDatasets/Test/padding_masks/multiCP"+str(num_cp))
+        torch.save(im_v, basedir+"/Datasets/OneBezierDatasets/Test/images/multiCP"+str(num_cp)+"_larger")
+        torch.save(seq_v, basedir+"/Datasets/OneBezierDatasets/Test/sequences/multiCP"+str(num_cp)+"_larger")
+        torch.save(tgt_padding_mask_v, basedir+"/Datasets/OneBezierDatasets/Test/padding_masks/multiCP"+str(num_cp)+"_larger")
 
     print("En generar tots els datasets hem trigat", time.time()-t0)
 

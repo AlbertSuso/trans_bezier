@@ -59,9 +59,9 @@ learning_rate = args.learning_rate if args.learning_rate is not None else 0.0000
 state_dicts_path = args.state_dicts
 
 """LOADING DATASET"""
-images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/multiCP"+str(num_control_points)))
-# sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/multiCP"+str(num_control_points)))
-tgt_padding_masks = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/padding_masks/multiCP"+str(num_control_points)))
+images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/multiCP"+str(num_control_points)+"_larger"))
+# sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/multiCP"+str(num_control_points)+"_larger"))
+tgt_padding_masks = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/padding_masks/multiCP"+str(num_control_points)+"_larger"))
 dataset = images
 
 """PRE-ENTRENAMIENTO DEL PREDICTOR DE NUM_CP"""

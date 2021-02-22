@@ -43,8 +43,8 @@ args = parser.parse_args()
 num_experiment = args.num_experiment if args.num_experiment is not None else 0
 new_model = args.new_model if args.new_model is not None else True
 
-num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 5
-num_control_points = args.num_control_points if args.num_control_points is not None else 5
+num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 6
+num_control_points = args.num_control_points if args.num_control_points is not None else 6
 
 batch_size = args.batch_size if args.batch_size is not None else 64
 num_epochs = args.num_epochs if args.num_epochs is not None else 200
@@ -61,8 +61,8 @@ min_variance = args.min_variance if args.min_variance is not None else 0.8
 penalization_coef = args.penalization_coef if args.penalization_coef is not None else 0.1
 
 """LOADING DATASET"""
-# images = torch.load(os.path.join(dataset_basedir, "Datasets/MNIST/thinned_umbral1"))
-images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/fixedCP"+str(num_control_points)))
+images = torch.load(os.path.join(dataset_basedir, "Datasets/MNIST/thinned_relocated"))
+# images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/fixedCP"+str(num_control_points)))
 # sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/fixedCP"+str(num_control_points)))
 dataset = images
 

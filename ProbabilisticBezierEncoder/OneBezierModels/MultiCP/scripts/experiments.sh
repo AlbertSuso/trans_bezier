@@ -4,14 +4,14 @@
 case $1 in
 	0)
 		batch_size="64"
-		num_epochs="500"
+		num_epochs="200"
 		learning_rate="0.00005"
 		num_control_points="5"
-		num_transformer_layers="6"
+		num_transformer_layers="5"
 		cp_variance="25"
 		variance_drop="0.5"
 		epochs_drop="5"
-		min_variance="0.8"
+		min_variance="1"
 		penalization_coef="0.1"
 		new_model="True"
 		;;

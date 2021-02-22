@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from Utils.feature_extractor import ResNet18, ResNet12
+from Utils.feature_extractor import ResNet18, NumCP_predictor12, NumCP_predictor18
 from Utils.positional_encoder import PositionalEncoder
 
 
@@ -79,19 +79,16 @@ class TransformerDecoder(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, image_size, feature_extractor=ResNet18, cp_predictor=ResNet12, num_transformer_layers=6, transformer_encoder=True):
+    def __init__(self, image_size, feature_extractor=ResNet18, cp_predictor=NumCP_predictor12, num_transformer_layers=6, transformer_encoder=True):
         super().__init__()
         self.image_size = image_size
         self.max_cp = cp_predictor.max_cp
 
-        self._cp_predictor = cp_predictor
+        self._num_cp_predictor = cp_predictor
 
-        if transformer_encoder:
-            self._encoder = TransformerEncoder(num_layers=num_transformer_layers, feature_extractor=feature_extractor())
-        else:
-            self._encoder = feature_extractor()
+        self._encoder = TransformerEncoder(num_layers=num_transformer_layers, feature_extractor=feature_extractor())
         self.d_model = self._encoder.d_model
-        self._decoder = TransformerDecoder(self.d_model, num_layers=num_transformer_layers)
+        self._decoders = nn.ModuleList([TransformerDecoder(self.d_model, num_layers=i+3) for i in range(self.max_cp-1)])
 
         self._out_cp = nn.Linear(self.d_model, 2)
         # self._out_variance = nn.Linear(self.d_model, 1)
@@ -103,16 +100,25 @@ class Transformer(nn.Module):
         memory = self._encoder(image_input)
         num_cps = 2 + torch.argmax(self._cp_predictor(image_input), dim=-1).long()
 
-        control_points = torch.zeros((0, batch_size, 2), dtype=torch.float32, device=image_input.device)
+        control_points = torch.zeros((self.max_cp, batch_size, 2), dtype=torch.float32, device=image_input.device)
 
-        # Generamos self.max_cp puntos de control (los del final pueden ser padding)
-        for n in range(self.max_cp):
-            # Ejecutamos el decoder para obtener un nuevo punto de control
-            output = self._decoder(control_points, memory)
-            last = output[-1]
+        for i, decoder in enumerate(self._decoders):
+            target_images_mask = num_cps == i+2
+            target_memory = memory[:, target_images_mask]
 
-            cp = torch.sigmoid(self._out_cp(last)).view(1, batch_size, 2)
-            control_points = torch.cat((control_points, cp), dim=0)
+            # Generamos i+2 puntos de control
+            actual_control_points = torch.zeros((0, batch_size, 2), dtype=torch.float32, device=image_input.device)
+            for n in range(i+2):
+                # Ejecutamos el decoder para obtener un nuevo punto de control
+                output = self._decoder(actual_control_points, target_memory)
+                last = output[-1]
+
+                cp = torch.sigmoid(self._out_cp(last)).view(1, batch_size, 2)
+                actual_control_points = torch.cat((actual_control_points, cp), dim=0)
+
+            # Añadimos los control points generados al global de control points
+            control_points[:i+2, target_images_mask] = actual_control_points
+
 
         # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size-0.5)x(0, im_size-0.5)
         control_points *= self.image_size-0.5

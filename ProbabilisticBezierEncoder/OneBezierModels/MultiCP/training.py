@@ -47,7 +47,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef)+"_solvedMistake")
+        writer = SummaryWriter(basedir+"/graphics/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/MultiCPoriginal_newVersion")
         counter = 0
 
     # Obtenemos las imagenes del dataset
@@ -63,10 +63,10 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     # Particionamos el dataset en training y validation
     # images.shape=(N, 1, 64, 64)
     # sequences.shape=(100, N, 2)
-    im_training = images[:40000]
-    im_validation = images[40000:]
-    loss_im_training = loss_images[:40000]
-    loss_im_validation = loss_images[40000:]
+    im_training = images[:80000]
+    im_validation = images[80000:]
+    loss_im_training = loss_images[:80000]
+    loss_im_validation = loss_images[80000:]
 
     # Definimos el optimizer
     optimizer = optimizer(model.parameters(), lr=lr)
@@ -139,7 +139,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/"+str(model.max_cp)+"CP_decMinvar"+str(min_variance)+"_negativeCoef"+str(penalization_coef)+"_solvedMistake")
+                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/MultiCP/MultiCPoriginal_newVersion")
             cummulative_loss = 0
 
             
