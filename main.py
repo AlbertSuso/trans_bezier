@@ -3,8 +3,8 @@ import os
 import torch
 
 from torch.optim import Adam
-from ProbabilisticBezierEncoder.MultiBezierModels.FixedCP.transformer import Transformer
-from ProbabilisticBezierEncoder.MultiBezierModels.FixedCP.training import train_one_bezier_transformer
+from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.transformer import Transformer
+from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.training import train_one_bezier_transformer
 from Utils.feature_extractor import ResNet18
 
 
@@ -22,7 +22,6 @@ parser.add_argument('-new', '--new_model', type=bool)
 
 parser.add_argument('-ntl', '--num_transformer_layers', type=int)
 parser.add_argument('-ncp', '--num_control_points', type=int)
-parser.add_argument('-max_bez', '--max_beziers', type=int)
 
 parser.add_argument('-bs', '--batch_size', type=int)
 parser.add_argument('-e', '--num_epochs', type=int)
@@ -45,8 +44,7 @@ num_experiment = args.num_experiment if args.num_experiment is not None else 0
 new_model = args.new_model if args.new_model is not None else True
 
 num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 6
-num_control_points = args.num_control_points if args.num_control_points is not None else 3
-max_beziers = args.max_beziers if args.max_beziers is not None else 2
+num_control_points = args.num_control_points if args.num_control_points is not None else 6
 
 batch_size = args.batch_size if args.batch_size is not None else 64
 num_epochs = args.num_epochs if args.num_epochs is not None else 200
@@ -58,22 +56,22 @@ distance_type = args.distance_type if args.distance_type is not None else 'l2'
 # predict_variance = args.predict_variance if args.predict_variance is not None else True
 cp_variance = args.cp_variance if args.cp_variance is not None else 25
 variance_drop = args.variance_drop if args.variance_drop is not None else 0.5
-epochs_drop = args.epochs_drop if args.epochs_drop is not None else 10
-min_variance = args.min_variance if args.min_variance is not None else 1
+epochs_drop = args.epochs_drop if args.epochs_drop is not None else 5
+min_variance = args.min_variance if args.min_variance is not None else 0.8
 penalization_coef = args.penalization_coef if args.penalization_coef is not None else 0.1
 
 """LOADING DATASET"""
 # images = torch.load(os.path.join(dataset_basedir, "Datasets/MNIST/thinned_relocated"))
-images = torch.load(os.path.join(dataset_basedir, "Datasets/MultiBezierDatasets/Training/images/fixedCP"+str(num_control_points)+"_maxBeziers"+str(max_beziers)+"imSize64"))
+images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/fixedCP"+str(num_control_points)))
 # sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/fixedCP"+str(num_control_points)))
 dataset = images
 
 """INSTANTIATION OF THE MODEL"""
 image_size = 64
 model = Transformer(image_size, feature_extractor=ResNet18, num_transformer_layers=num_transformer_layers,
-                    num_cp=num_control_points, max_beziers=max_beziers)
+                    num_cp=num_control_points, transformer_encoder=True)
 if not new_model:
-    model.load_state_dict(torch.load(state_dict_basedir+"/state_dicts/ProbabilisticBezierEncoder/MultiBezierModels/fixedCP/"+str(model.num_cp)+"CP_maxBeziers"+str(max_beziers)+"loss"+str(loss_type)+"_distance"+str(distance_type)+"_exp"+str(num_experiment)))
+    model.load_state_dict(torch.load(state_dict_basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/fixedCP/"+str(model.num_cp)+"CP_exp"+str(num_experiment)))
 
 """SELECT OPTIMIZATOR AND RUN TRAINING"""
 optimizer = Adam

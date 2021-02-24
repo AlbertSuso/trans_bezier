@@ -68,7 +68,7 @@ class ProbabilisticMap(nn.Module):
         # Separamos aquellos elementos del batch válidos (que tienen >0 control points)
         valids1 = torch.sum(mean == 0, dim=(1, 2)) != 2*mean.shape[1]
         valids2 = torch.sum(covariance == 0, dim=(1, 2, 3)) != 4*mean.shape[1]
-        valids = torch.logical_or(valids1, valids2)
+        valids = valids1+valids2
 
         # TODOS LOS UNSQUEEZE SON PARA QUE LAS DIMENSIONES CUADREN Y SE PUEDAN VECTORIZAR LAS OPERACIONES
         # Esto es debido a que p.shape=(1, 64, 64, 2). Por tanto las 3 primeras componentes de cada tensor son

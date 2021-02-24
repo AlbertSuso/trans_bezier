@@ -1,5 +1,7 @@
 import torch
-from torch.distributions.bernoulli import Bernoulli
 
-for i in range(5, -1, -1):
-    print(i)
+
+a = torch.tensor([True, True, False], dtype=torch.bool)
+b = torch.tensor([True, False, False], dtype=torch.bool)
+
+print(a+b)

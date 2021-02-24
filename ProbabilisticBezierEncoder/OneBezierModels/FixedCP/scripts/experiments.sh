@@ -16,8 +16,8 @@ case $1 in
 		cp_variance="25"
 		variance_drop="0.5"
 		epochs_drop="5"
-		min_variance="0.8"
-		penalization_coef="0.1"
+		min_variance="1"
+		penalization_coef="0.2"
 		new_model="True"
 		;;
 	1)
@@ -29,13 +29,13 @@ case $1 in
 		num_transformer_layers="6"
 
 		loss_type="pmap"
-		distance_type="l2"
+		distance_type="quadratic"
 
 		cp_variance="25"
 		variance_drop="0.5"
 		epochs_drop="5"
-		min_variance="0.8"
-		penalization_coef="0.1"
+		min_variance="1"
+		penalization_coef="0.2"
 		new_model="True"
 		;;
 	2)

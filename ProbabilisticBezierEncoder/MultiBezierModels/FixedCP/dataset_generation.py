@@ -39,7 +39,7 @@ def bezier(CP, num_cps, t, device='cuda'):
 
     for i, P in enumerate(CP):
         output = output + (binomial_coefs[i].unsqueeze(1) * t**i * t_inv**((num_cps-1-i).unsqueeze(1))).unsqueeze(-1) * P.unsqueeze(1)
-    output[torch.sum(output, dim=0) == 0] = 500*torch.ones((t.shape[1], 2), device=output.device)
+    output[torch.sum(output, dim=(1, 2)) == 0] = 500*torch.ones((t.shape[1], 2), device=output.device)
     return output
 
 def generate1bezier(im_size=64, batch_size=64, max_beziers = 2, num_control_points=3, resolution=150, device='cuda'):
@@ -95,7 +95,7 @@ if __name__ == '__main__':
 
     t0 = time.time()
     max_beziers = 2
-    for num_cp in [3, 4, 5, 6]:
+    for num_cp in [3]:
         im_size = 64
         im = generate1bezier(im_size=im_size, batch_size=50000, max_beziers=max_beziers, num_control_points=num_cp, device='cuda')
         im = im.to('cpu')

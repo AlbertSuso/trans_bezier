@@ -83,6 +83,6 @@ loss_mode = (loss_type, distance_type)
 
 train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer, loss_mode,
                              num_experiment, cp_variance, variance_drop, epochs_drop, min_variance, penalization_coef,
-                             lr=learning_rate, cuda=True, debug=True)
+                             lr=learning_rate, cuda=False, debug=True)
 
 print("FINISHED TRAINING WITH EXIT")

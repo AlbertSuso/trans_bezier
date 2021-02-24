@@ -61,8 +61,8 @@ min_variance = args.min_variance if args.min_variance is not None else 0.8
 penalization_coef = args.penalization_coef if args.penalization_coef is not None else 0.1
 
 """LOADING DATASET"""
-images = torch.load(os.path.join(dataset_basedir, "Datasets/MNIST/thinned_relocated"))
-# images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/fixedCP"+str(num_control_points)))
+# images = torch.load(os.path.join(dataset_basedir, "Datasets/MNIST/thinned_relocated"))
+images = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/images/fixedCP"+str(num_control_points)))
 # sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/fixedCP"+str(num_control_points)))
 dataset = images
 
