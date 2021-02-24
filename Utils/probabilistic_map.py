@@ -64,17 +64,26 @@ class ProbabilisticMap(nn.Module):
         mean.shape = (batch_size, temporal_size, 2) (2=cp_size)
         cov.shape = (batch_size, temporal_size, 2, 2)
         """
+        batch_size = mean.shape[0]
+        # Separamos aquellos elementos del batch válidos (que tienen >0 control points)
+        valids1 = torch.sum(mean == 0, dim=(1, 2)) != 2*mean.shape[1]
+        valids2 = torch.sum(covariance == 0, dim=(1, 2, 3)) != 4*mean.shape[1]
+        valids = torch.logical_or(valids1, valids2)
+
         # TODOS LOS UNSQUEEZE SON PARA QUE LAS DIMENSIONES CUADREN Y SE PUEDAN VECTORIZAR LAS OPERACIONES
         # Esto es debido a que p.shape=(1, 64, 64, 2). Por tanto las 3 primeras componentes de cada tensor son
         # batch_size, grid_height y grid_width respectivamente. En realidad las operaciones queremos hacerlas
         # sobre las dos ultimas componentes, y acabar obteniendo un mapa con map.shape=(batch_size, 64, 64)
-        mean = mean.unsqueeze(1).unsqueeze(1)
-        cov_inv = torch.inverse(covariance).unsqueeze(1).unsqueeze(1)
-        divisor = 2 * np.pi * torch.sqrt(torch.det(covariance)).unsqueeze(1).unsqueeze(1)
+        mean = mean[valids].unsqueeze(1).unsqueeze(1)
+        cov_inv = torch.inverse(covariance[valids]).unsqueeze(1).unsqueeze(1)
 
-        up = torch.matmul(self.positions.unsqueeze(-2) - mean.unsqueeze(-2), cov_inv)
-        up = torch.matmul(up, self.positions.unsqueeze(-1) - mean.unsqueeze(-1))
-        up = torch.exp(-0.5 * up)
+        divisor = torch.ones((batch_size, 1, 1, self._map_temporalSize), device=mean.device)
+        divisor[valids] = 2 * np.pi * torch.sqrt(torch.det(covariance[valids])).unsqueeze(1).unsqueeze(1)
+
+        up = torch.zeros((batch_size, self._map_height, self._map_width, self._map_temporalSize, 1, 1), device=mean.device)
+        result = torch.matmul(self.positions.unsqueeze(-2) - mean.unsqueeze(-2), cov_inv)
+        result = torch.matmul(result, self.positions.unsqueeze(-1) - mean.unsqueeze(-1))
+        up[valids] = torch.exp(-0.5 * result)
         return up[:, :, :, :, 0, 0]/divisor
 
 
@@ -123,11 +132,11 @@ if __name__ == '__main__':
     images = torch.load(os.path.join(basedir, "images/fixedCP3"))
     sequences = torch.load(os.path.join(basedir, "sequences/fixedCP3"))
 
-    map_maker = ProbabilisticMap(map_sizes=(64, 64, 50)).cuda()
+    map_maker = ProbabilisticMap(map_sizes=(64, 64, 50)) #.cuda()
 
-    batch_size = 1
-    idx = 185
-    im = images[idx:idx+batch_size].cuda()
+    batch_size = 11
+    idx = 166
+    im = images[idx:idx+batch_size] #.cuda()
     seq = sequences[:-1, idx:idx+batch_size]
 
     #padding_mask = padding_masks[idx]
@@ -144,13 +153,14 @@ if __name__ == '__main__':
     for i in range(batch_size):
         cp_covariances[:, i, :, :] = cp_covariance
 
-    cp_means = cp_means.cuda()
-    cp_covariances = cp_covariances.cuda()
+    cp_means = cp_means #.cuda()
+    cp_covariances = cp_covariances #.cuda()
 
     t0 = time.time()
-    map = map_maker(cp_means, num_cp*torch.ones(batch_size, dtype=torch.long, device='cuda'), cp_covariances, mode='d')
+    map = map_maker(cp_means, num_cp*torch.ones(batch_size, dtype=torch.long, device='cpu'), cp_covariances, mode='p')
     print("Proporción de infs en el mapa es", torch.sum(torch.isinf(map))/(64*64))
     map[torch.isinf(map)] = 0
+    print(map.shape)
 
     plt.imshow(map[0].cpu(), cmap='gray')
     plt.show()

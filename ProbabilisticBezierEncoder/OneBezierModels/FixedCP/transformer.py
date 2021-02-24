@@ -89,10 +89,7 @@ class Transformer(nn.Module):
         self.image_size = image_size
         self.num_cp = num_cp
 
-        if transformer_encoder:
-            self._encoder = TransformerEncoder(num_layers=num_transformer_layers, feature_extractor=feature_extractor())
-        else:
-            self._encoder = feature_extractor()
+        self._encoder = TransformerEncoder(num_layers=num_transformer_layers, feature_extractor=feature_extractor())
         self.d_model = self._encoder.d_model
         self._decoder = TransformerDecoder(self.d_model, num_layers=num_transformer_layers)
 

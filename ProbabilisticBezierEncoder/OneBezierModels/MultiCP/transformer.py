@@ -98,7 +98,7 @@ class Transformer(nn.Module):
         batch_size = image_input.shape[0]
 
         memory = self._encoder(image_input)
-        num_cps = 2 + torch.argmax(self._cp_predictor(image_input), dim=-1).long()
+        num_cps = 2 + torch.argmax(self._num_cp_predictor(image_input), dim=-1).long()
 
         control_points = torch.zeros((self.max_cp, batch_size, 2), dtype=torch.float32, device=image_input.device)
 
@@ -107,13 +107,13 @@ class Transformer(nn.Module):
             target_memory = memory[:, target_images_mask]
 
             # Generamos i+2 puntos de control
-            actual_control_points = torch.zeros((0, batch_size, 2), dtype=torch.float32, device=image_input.device)
+            actual_control_points = torch.zeros((0, torch.sum(target_images_mask), 2), dtype=torch.float32, device=image_input.device)
             for n in range(i+2):
                 # Ejecutamos el decoder para obtener un nuevo punto de control
-                output = self._decoder(actual_control_points, target_memory)
+                output = decoder(actual_control_points, target_memory)
                 last = output[-1]
 
-                cp = torch.sigmoid(self._out_cp(last)).view(1, batch_size, 2)
+                cp = torch.sigmoid(self._out_cp(last)).view(1, -1, 2)
                 actual_control_points = torch.cat((actual_control_points, cp), dim=0)
 
             # Añadimos los control points generados al global de control points

@@ -8,11 +8,11 @@ from ProbabilisticBezierEncoder.MultiBezierModels.FixedCP.training import train_
 from Utils.feature_extractor import ResNet18
 
 
-dataset_basedir = "/data2fast/users/asuso"
-# dataset_basedir = "/home/asuso/PycharmProjects/trans_bezier"
+# dataset_basedir = "/data2fast/users/asuso"
+dataset_basedir = "/home/asuso/PycharmProjects/trans_bezier"
 
-state_dict_basedir = "/data1slow/users/asuso/trans_bezier"
-# state_dict_basedir = "/home/asuso/PycharmProjects/trans_bezier"
+# state_dict_basedir = "/data1slow/users/asuso/trans_bezier"
+state_dict_basedir = "/home/asuso/PycharmProjects/trans_bezier"
 
 """SELECTION OF HYPERPARAMETERS"""
 
