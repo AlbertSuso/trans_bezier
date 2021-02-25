@@ -14,14 +14,14 @@ def dmap_loss(control_points, num_cps, im, grid, distance='l2'):
                       torch.linspace(0, 1, 150, device=num_cps.device).unsqueeze(0), device=num_cps.device)
 
     pred_seq = pred_seq.unsqueeze(-2).unsqueeze(-2)
-    distance_map = torch.sqrt(torch.sum((grid - pred_seq) ** 2, dim=-1))
+    distance_map = torch.sum((grid - pred_seq) ** 2, dim=-1)
     distance_map, _ = torch.min(distance_map, dim=1)
 
-    if distance == 'quadratic':
-        distance_map = distance_map*distance_map
-    elif distance == 'exp':
-        distance_map = torch.exp(distance_map)
+    if distance == 'l2':
+        distance_map = torch.sqrt(distance_map)
 
+    # normalizamos el mapa de distancias
+    distance_map = distance_map/torch.max(distance_map)
     return torch.sum(distance_map * im[:, 0]/torch.sum(im[:, 0], dim=(1, 2))) / im.shape[0]
 
 def chamfer_loss(control_points, num_cps, im, distance_im, grid):
