@@ -2,10 +2,12 @@ import torch
 
 from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.dataset_generation import bezier
 
-def pmap_loss(control_points, num_cps, actual_covariances, im, loss_im, probabilistic_map_generator):
+def pmap_loss(control_points, num_cps, actual_covariances, im, loss_im, probabilistic_map_generator, mode='p', distance='quadratic'):
     batch_size = im.shape[0]
 
-    probability_map = probabilistic_map_generator(control_points, num_cps, actual_covariances)
+    probability_map = probabilistic_map_generator(control_points, num_cps, actual_covariances, mode=mode)
+    if distance == 'quadratic':
+        probability_map = probability_map*probability_map
     return -torch.sum(probability_map * loss_im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1))/batch_size
 
 

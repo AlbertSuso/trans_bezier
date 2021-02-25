@@ -109,6 +109,10 @@ class ProbabilisticMap(nn.Module):
         if mode == 'p':
             return reduced_map
         elif mode == 'd':
+            # Ponemos un valor pequeño en lugar de los valores nulos del mapa de probabilidades (que son nulos debido a la falta de precisión
+            # numérica de las operaciones float32
+            reduced_map[reduced_map == 0] = reduced_map[reduced_map == 0] + torch.min(reduced_map[reduced_map != 0])
+
             # Creamos un array variances de shape variances.shape=(batch_size, 64, 64) tal que variances[i, y, x] es la variancia de la distribución normal que sigue el punto (y, x)
             # del mapa probabilistico reducido
             variances = torch.empty((batch_size, self._map_height, self._map_width), device=cp_means.device)
@@ -116,8 +120,6 @@ class ProbabilisticMap(nn.Module):
                 variances[i] = covariance[i, max_idxs[i], 0, 0]
 
             distance_map = torch.sqrt(-2*variances*torch.log(2*np.pi*variances*reduced_map))
-            distance_map[distance_map.isinf()] = -1
-            distance_map[distance_map == -1] = torch.max(distance_map)
             return distance_map
         else:
             raise IndexError
@@ -134,7 +136,7 @@ if __name__ == '__main__':
 
     map_maker = ProbabilisticMap(map_sizes=(64, 64, 50)) #.cuda()
 
-    batch_size = 11
+    batch_size = 1
     idx = 166
     im = images[idx:idx+batch_size] #.cuda()
     seq = sequences[:-1, idx:idx+batch_size]
@@ -157,9 +159,9 @@ if __name__ == '__main__':
     cp_covariances = cp_covariances #.cuda()
 
     t0 = time.time()
-    map = map_maker(cp_means, num_cp*torch.ones(batch_size, dtype=torch.long, device='cpu'), cp_covariances, mode='p')
+    map = map_maker(cp_means, num_cp*torch.ones(batch_size, dtype=torch.long, device='cpu'), cp_covariances, mode='d')
     print("Proporción de infs en el mapa es", torch.sum(torch.isinf(map))/(64*64))
-    map[torch.isinf(map)] = 0
+    print(torch.max(map))
     print(map.shape)
 
     plt.imshow(map[0].cpu(), cmap='gray')

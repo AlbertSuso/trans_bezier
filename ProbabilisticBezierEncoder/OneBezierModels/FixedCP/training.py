@@ -104,7 +104,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Calculamos la loss
             if loss_mode[0] == 'pmap':
                 loss_im = loss_im_training[i:i + batch_size]
-                loss = pmap_loss(control_points, num_cps, actual_covariances, im, loss_im, probabilistic_map_generator)
+                loss = pmap_loss(control_points, num_cps, actual_covariances, im, loss_im, probabilistic_map_generator, mode='p', distance=loss_mode[1])
             elif loss_mode[0] == 'dmap':
                 loss = dmap_loss(control_points, num_cps, im, grid, distance=loss_mode[1])
             if debug:
@@ -144,7 +144,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 if loss_mode[0] == 'pmap':
                     loss_im = loss_im_validation[j:j + batch_size]
                     loss = pmap_loss(control_points, num_cps, actual_covariances, im, loss_im,
-                                     probabilistic_map_generator)
+                                     probabilistic_map_generator, mode='p', distance=loss_mode[1])
                 elif loss_mode[0] == 'dmap':
                     loss = dmap_loss(control_points, num_cps, im, grid, distance=loss_mode[1])
                 cummulative_loss += loss

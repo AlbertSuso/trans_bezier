@@ -4,13 +4,13 @@
 case $1 in
 	0)
 		batch_size="64"
-		num_epochs="500"
+		num_epochs="240"
 		learning_rate="0.00005"
 
 		num_control_points="5"
 		num_transformer_layers="5"
 
-		loss_type="dmap"
+		loss_type="pmap"
 		distance_type="quadratic"
 
 		cp_variance="25"
@@ -22,11 +22,11 @@ case $1 in
 		;;
 	1)
 		batch_size="64"
-		num_epochs="500"
+		num_epochs="240"
 		learning_rate="0.00005"
 
-		num_control_points="3"
-		num_transformer_layers="6"
+		num_control_points="5"
+		num_transformer_layers="5"
 
 		loss_type="pmap"
 		distance_type="quadratic"
@@ -40,11 +40,11 @@ case $1 in
 		;;
 	2)
 		batch_size="64"
-		num_epochs="500"
+		num_epochs="240"
 		learning_rate="0.00005"
 
 		num_control_points="5"
-		num_transformer_layers="8"
+		num_transformer_layers="5"
 
 		loss_type="pmap"
 		distance_type="l2"
@@ -52,17 +52,17 @@ case $1 in
 		cp_variance="25"
 		variance_drop="0.5"
 		epochs_drop="5"
-		min_variance="0.4"
+		min_variance="1"
 		penalization_coef="0.1"
 		new_model="True"
 		;;
 	3)
 		batch_size="64"
-		num_epochs="500"
+		num_epochs="240"
 		learning_rate="0.00005"
 
 		num_control_points="5"
-		num_transformer_layers="8"
+		num_transformer_layers="5"
 
 		loss_type="pmap"
 		distance_type="l2"
@@ -70,7 +70,7 @@ case $1 in
 		cp_variance="25"
 		variance_drop="0.5"
 		epochs_drop="5"
-		min_variance="0.8"
+		min_variance="1"
 		penalization_coef="0.1"
 		new_model="True"
 		;;
