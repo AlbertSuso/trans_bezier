@@ -125,7 +125,6 @@ class Transformer(nn.Module):
             # Generamos self.num_cp puntos de control (ninguno puede ser padding)
             for n in range(self.num_cp):
                 # Ejecutamos el decoder para obtener un nuevo punto de control
-                print(torch.sum(active_samples))
                 output = self._decoder(control_points[:, active_samples], bos_idxs, memory[:, active_samples])
                 last = output[-1]
 
@@ -153,10 +152,16 @@ class Transformer(nn.Module):
             # Actualizamos las imagenes cuya recreación sigue activa usando el resultado del sampling
             active_samples = active_samples[new_active_samples.bool().view(-1)]
 
+            # Actualizamos el contador
+            i += 1
+
 
         # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size-0.5)x(0, im_size-0.5)
         control_points *= self.image_size-0.5
 
 
-        return control_points, num_beziers, probabilities #probabilities.shape=(max_beziers, batch_size)
+        return control_points, num_beziers, probabilities
+        # control_points.shape=(num_cp*num_beziers_maxSample, batch_size, 2)
+        # num_beziers.shape=(batch_size,)
+        # probabilities.shape=(max_beziers, batch_size)
 

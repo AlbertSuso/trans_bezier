@@ -100,6 +100,8 @@ class ProbabilisticMap(nn.Module):
 
         output.shape = (batch_size, image_height, image_width, temporal_size)
         """
+        batch_size = num_cps.shape[0]
+
         mean, covariance = self._normal_dist_parameters(torch.linspace(0, 1, self._map_temporalSize, device=cp_means.device),
                                                         cp_means, num_cps, cp_covariances)
         probability_map = self._normal2d(mean, covariance)
@@ -120,6 +122,16 @@ class ProbabilisticMap(nn.Module):
                 variances[i] = covariance[i, max_idxs[i], 0, 0]
 
             distance_map = torch.sqrt(-2*variances*torch.log(2*np.pi*variances*reduced_map))
+
+            print(torch.min(variances))
+            print(torch.max(variances))
+            print(torch.min(distance_map))
+            print(torch.max(distance_map))
+
+            assert torch.sum(distance_map < 0) == 0
+            assert torch.sum(torch.isnan(distance_map)) == 0
+            assert torch.sum(torch.isinf(distance_map)) == 0
+
             return distance_map
         else:
             raise IndexError

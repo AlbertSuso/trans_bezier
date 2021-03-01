@@ -43,8 +43,8 @@ args = parser.parse_args()
 num_experiment = args.num_experiment if args.num_experiment is not None else 0
 new_model = args.new_model if args.new_model is not None else True
 
-num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 6
-num_control_points = args.num_control_points if args.num_control_points is not None else 6
+num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 5
+num_control_points = args.num_control_points if args.num_control_points is not None else 5
 
 batch_size = args.batch_size if args.batch_size is not None else 64
 num_epochs = args.num_epochs if args.num_epochs is not None else 200
@@ -57,7 +57,7 @@ distance_type = args.distance_type if args.distance_type is not None else 'l2'
 cp_variance = args.cp_variance if args.cp_variance is not None else 25
 variance_drop = args.variance_drop if args.variance_drop is not None else 0.5
 epochs_drop = args.epochs_drop if args.epochs_drop is not None else 5
-min_variance = args.min_variance if args.min_variance is not None else 0.8
+min_variance = args.min_variance if args.min_variance is not None else 1
 penalization_coef = args.penalization_coef if args.penalization_coef is not None else 0.1
 
 """LOADING DATASET"""

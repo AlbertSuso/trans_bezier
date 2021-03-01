@@ -2,8 +2,7 @@ import torch
 
 from ProbabilisticBezierEncoder.MultiBezierModels.FixedCP.dataset_generation import bezier
 
-def get_pmap_rewards(control_points, num_cp, num_beziers, im, loss_im, actual_covariances, probabilistic_map_generator,
-                     distance='l2', gamma=0.9):
+def get_pmap_rewards(control_points, num_cp, num_beziers, im, loss_im, actual_covariances, probabilistic_map_generator, gamma=0.9):
     """
     control_points.shape = (num_cp*max_beziers, batch_size, 2)
     num_cp = scalar
@@ -17,7 +16,6 @@ def get_pmap_rewards(control_points, num_cp, num_beziers, im, loss_im, actual_co
     probability_map = torch.empty((0, batch_size, 64, 64), device=im.device)
     pmap_rewards = torch.empty((0, batch_size), device=im.device)
 
-    to_end = True
     i = 0
     not_finished = num_beziers > i
     to_end = torch.sum(not_finished)
@@ -30,10 +28,6 @@ def get_pmap_rewards(control_points, num_cp, num_beziers, im, loss_im, actual_co
 
         #Calculamos el reward obtenido después de dibujar esta curva
         reduced_pmap, _ = torch.max(probability_map, dim=0)
-        if distance == 'quadratic':
-            reduced_pmap = reduced_pmap * reduced_pmap
-        elif distance == 'exp':
-            reduced_pmap = torch.exp(reduced_pmap)
         new_rewards = torch.sum(reduced_pmap * loss_im[:, 0] / torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1), dim=(1, 2))
         pmap_rewards = torch.cat((pmap_rewards, new_rewards.unsqueeze(0)), dim=0)
 
@@ -101,7 +95,7 @@ def loss_function(control_points, num_beziers, probabilities, num_cp, im, loss_i
          probabilistic_map_generator, map_type='pmap', distance='l2', gamma=0.9):
     if map_type == 'pmap':
         cummulative_rewards = get_pmap_rewards(control_points, num_cp, num_beziers, im, loss_im,
-                                               actual_covariances, probabilistic_map_generator, distance=distance, gamma=gamma)
+                                               actual_covariances, probabilistic_map_generator, gamma=gamma)
     else:
         cummulative_rewards = get_dmap_rewards(control_points, num_cp, num_beziers, im, grid,
                                                distance=distance, gamma=gamma)

@@ -48,7 +48,7 @@ num_transformer_layers = args.num_transformer_layers if args.num_transformer_lay
 num_control_points = args.num_control_points if args.num_control_points is not None else 3
 max_beziers = args.max_beziers if args.max_beziers is not None else 2
 
-batch_size = args.batch_size if args.batch_size is not None else 64
+batch_size = args.batch_size if args.batch_size is not None else 16
 num_epochs = args.num_epochs if args.num_epochs is not None else 200
 learning_rate = args.learning_rate if args.learning_rate is not None else 0.00005
 
@@ -83,6 +83,6 @@ loss_mode = (loss_type, distance_type)
 
 train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer, loss_mode,
                              num_experiment, cp_variance, variance_drop, epochs_drop, min_variance, penalization_coef,
-                             lr=learning_rate, cuda=False, debug=True)
+                             lr=learning_rate, cuda=True, debug=True)
 
 print("FINISHED TRAINING WITH EXIT")

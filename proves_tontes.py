@@ -1,7 +1,13 @@
-import torch
+import time
 
+i = 999999999
+t0 = time.time()
+while i:
+    i = i-1
+print("Tiempo transcurrido=", time.time()-t0)
 
-a = torch.tensor([True, True, False], dtype=torch.bool)
-b = torch.tensor([True, False, False], dtype=torch.bool)
-
-print(a+b)
+i = 999999999
+t0 = time.time()
+while i > 0:
+    i = i-1
+print("Tiempo transcurrido=", time.time()-t0)
