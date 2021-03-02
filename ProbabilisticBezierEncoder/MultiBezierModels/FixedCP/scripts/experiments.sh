@@ -8,7 +8,7 @@ case $1 in
 		learning_rate="0.00005"
 
 		num_control_points="3"
-		num_transformer_layers="5"
+		num_transformer_layers="6"
 		max_beziers="2"
 
 		loss_type="pmap"
@@ -17,7 +17,7 @@ case $1 in
 		cp_variance="25"
 		variance_drop="0.5"
 		epochs_drop="10"
-		min_variance="0.8"
+		min_variance="1"
 		penalization_coef="0.1"
 		new_model="True"
 		;;

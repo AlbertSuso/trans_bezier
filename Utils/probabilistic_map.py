@@ -126,7 +126,7 @@ class ProbabilisticMap(nn.Module):
             print(torch.min(variances))
             print(torch.max(variances))
             print(torch.min(distance_map))
-            print(torch.max(distance_map))
+            print(torch.max(distance_map), "\n")
 
             assert torch.sum(distance_map < 0) == 0
             assert torch.sum(torch.isnan(distance_map)) == 0
@@ -171,12 +171,25 @@ if __name__ == '__main__':
     cp_covariances = cp_covariances #.cuda()
 
     t0 = time.time()
-    map = map_maker(cp_means, num_cp*torch.ones(batch_size, dtype=torch.long, device='cpu'), cp_covariances, mode='d')
-    print("Proporción de infs en el mapa es", torch.sum(torch.isinf(map))/(64*64))
+    map = map_maker(cp_means, num_cp*torch.ones(batch_size, dtype=torch.long, device='cpu'), cp_covariances, mode='p')
+    print("Numero de pixeles pintados en la imagen", torch.sum(im[0, 0]))
+    print("Numero de pixeles pintados en el mapa", torch.sum(map[0] > 0))
     print(torch.max(map))
     print(map.shape)
 
+    painted_pixels = map[0].clone()
+    painted_pixels[painted_pixels > 0] = 1
+
+    plt.figure()
+    plt.subplot(1, 3, 1)
+    plt.imshow(im[0, 0], cmap='gray')
+    plt.title("Imatge original")
+    plt.subplot(1, 3, 2)
     plt.imshow(map[0].cpu(), cmap='gray')
+    plt.title("Mapa probabilistic")
+    plt.subplot(1, 3, 3)
+    plt.imshow(painted_pixels.cpu(), cmap='gray')
+    plt.title("Painted pixels")
     plt.show()
 
 

@@ -101,7 +101,7 @@ def loss_function(control_points, num_beziers, probabilities, num_cp, im, loss_i
                                                distance=distance, gamma=gamma)
 
     model_loss = -cummulative_rewards[:, 0]
-    reinforcement_loss = -torch.sum(cummulative_rewards.detach() * torch.log(probabilities.permute(1, 0)), dim=-1)
+    reinforcement_loss = -torch.sum(cummulative_rewards[:, 1:].detach() * torch.log(probabilities[:-1].permute(1, 0)), dim=-1)
 
     return torch.mean(model_loss + reinforcement_loss)
 
