@@ -112,17 +112,61 @@ class Transformer(nn.Module):
         # Inicializamos los tensores que contendran los control points de las curvas, el numero de curvas de cada imagen
         # y las probabilidades del agente RL
         control_points = torch.zeros((0, batch_size, 2), dtype=torch.float32, device=image_input.device)
-        num_beziers = torch.zeros(batch_size, dtype=torch.long, device=image_input.device)
         probabilities = torch.zeros((0, batch_size), dtype=torch.float32, device=image_input.device)
+
+        # Tensor que guarda los indices de las secuencias que pertenecen a tokens BOS
+        bos_idxs = torch.tensor([i*(1+self.num_cp) for i in range(self.max_beziers+1)], dtype=torch.long, device=image_input.device)
+
+        for i in range(self.max_beziers):
+            # Llamamos al agente RL para generar las probabilidades de seguir con la generación de curvas de bezier
+            output_decoder = self._rl_decoder(control_points, bos_idxs[:i+1], memory)
+            output_decoder = output_decoder[-1]
+            step_probabilities = torch.sigmoid(self._rl_probability(output_decoder))
+            probabilities = torch.cat((probabilities, step_probabilities.permute(1, 0)), dim=0)
+
+            # Generamos self.num_cp puntos de control (1 curva de Bezier)
+            for n in range(self.num_cp):
+                # Ejecutamos el decoder para obtener un nuevo punto de control
+                output = self._decoder(control_points, bos_idxs[:i+1], memory)
+                last = output[-1]
+                new_cp = torch.sigmoid(self._out_cp(last)).view(1, batch_size, 2)
+                control_points = torch.cat((control_points, new_cp), dim=0)
+
+        # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size-0.5)x(0, im_size-0.5)
+        control_points *= self.image_size-0.5
+
+
+        return control_points, probabilities
+        # control_points.shape=(num_cp*num_beziers_maxSample, batch_size, 2)
+        # num_beziers.shape=(batch_size,)
+        # probabilities.shape=(max_beziers, batch_size)
+
+    def predict(self, image_input):
+        batch_size = image_input.shape[0]
+        memory = self._encoder(image_input)
+
+        # Inicializamos los tensores que contendran los control points de las curvas, el numero de curvas de cada imagen
+        # y las probabilidades del agente RL
+        control_points = torch.zeros((0, batch_size, 2), dtype=torch.float32, device=image_input.device)
+        num_beziers = torch.zeros(batch_size, dtype=torch.long, device=image_input.device)
 
         # Tensor que guarda los indices de las samples aún activas
         active_samples = torch.arange(batch_size, dtype=torch.long, device=image_input.device)
         # Tensor que guarda los indices de las secuencias que pertenecen a tokens BOS
         bos_idxs = torch.zeros(1, dtype=torch.long, device=image_input.device)
 
-        i = 0
-        while i < self.max_beziers and active_samples.shape[0] > 0:
-            # Generamos self.num_cp puntos de control (ninguno puede ser padding)
+        while active_samples.shape[0] > 0:
+            # Llamamos al agente RL para decidir qué samples siguen activas
+            output_decoder = self._rl_decoder(control_points[:, active_samples], bos_idxs, memory[:, active_samples])
+            output_decoder = output_decoder[-1]
+            step_probabilities = torch.sigmoid(self._rl_probability(output_decoder))
+            # Creamos una distribución de bernoulli con cada probabilidad y generemos un batch de samples
+            distribution = Bernoulli(step_probabilities)
+            new_active_samples = distribution.sample()
+            # Actualizamos las imagenes cuya recreación sigue activa usando el resultado del sampling
+            active_samples = active_samples[new_active_samples.bool().view(-1)]
+
+            # Generamos self.num_cp puntos de control para las imagenes cuya recreación sigue activa (i.e generamos una nueva curva de bezier para estas imagenes)
             for n in range(self.num_cp):
                 # Ejecutamos el decoder para obtener un nuevo punto de control
                 output = self._decoder(control_points[:, active_samples], bos_idxs, memory[:, active_samples])
@@ -138,30 +182,10 @@ class Transformer(nn.Module):
             # Actualizamos el tensor num_beziers
             num_beziers[active_samples] += 1
 
-            # Llamamos al agente RL para decidir qué samples siguen activas
-            output_decoder = self._rl_decoder(control_points[:, active_samples], bos_idxs, memory[:, active_samples])
-            output_decoder = output_decoder[-1]
-            step_probabilities = torch.sigmoid(self._rl_probability(output_decoder))
-            # Almacenamos las probabilidades generadas por el agente RL
-            new_probabilities = torch.zeros((1, batch_size), dtype=torch.float32, device=image_input.device)
-            new_probabilities[:, active_samples] = step_probabilities.permute(1, 0)
-            probabilities = torch.cat((probabilities, new_probabilities), dim=0)
-            # Creamos una distribución de bernoulli con cada probabilidad y generemos un batch de samples
-            distribution = Bernoulli(step_probabilities)
-            new_active_samples = distribution.sample()
-            # Actualizamos las imagenes cuya recreación sigue activa usando el resultado del sampling
-            active_samples = active_samples[new_active_samples.bool().view(-1)]
-
-            # Actualizamos el contador
-            i += 1
-
-
         # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size-0.5)x(0, im_size-0.5)
-        control_points *= self.image_size-0.5
+        control_points *= self.image_size - 0.5
 
-
-        return control_points, num_beziers, probabilities
+        return control_points, num_beziers
         # control_points.shape=(num_cp*num_beziers_maxSample, batch_size, 2)
         # num_beziers.shape=(batch_size,)
         # probabilities.shape=(max_beziers, batch_size)
-

@@ -35,14 +35,7 @@ def get_pmap_rewards(control_points, num_cp, num_beziers, im, loss_im, actual_co
         not_finished = num_beziers > i
         to_end = torch.sum(not_finished)
 
-    # Calculamos los cummulative rewards de cada curva
-    cummulative_rewards = pmap_rewards
-    cummulative_rewards[:, -1] -= cummulative_rewards[:, -2]
-    for i in range(cummulative_rewards.shape[1] - 2, 0, -1):
-        cummulative_rewards[:, i] += -cummulative_rewards[:, i - 1] + gamma * cummulative_rewards[:, i + 1]
-    cummulative_rewards[:, 0] += gamma * cummulative_rewards[:, 1]
-
-    return cummulative_rewards.permute(1, 0) #shape=(batch_size, max_beziers)
+    return pmap_rewards
 
 
 def get_dmap_rewards(control_points, num_cp, num_beziers, im, grid, distance='l2', gamma=0.9):
@@ -81,27 +74,28 @@ def get_dmap_rewards(control_points, num_cp, num_beziers, im, grid, distance='l2
 
         i += 1
 
-    # Calculamos los cummulative rewards de cada curva
-    cummulative_rewards = dmap_rewards
-    cummulative_rewards[:, -1] -= cummulative_rewards[:, -2]
-    for i in range(cummulative_rewards.shape[1] - 2, 0, -1):
-        cummulative_rewards[:, i] += -cummulative_rewards[:, i - 1] + gamma * cummulative_rewards[:, i + 1]
-    cummulative_rewards[:, 0] += gamma * cummulative_rewards[:, 1]
-
-    return cummulative_rewards  # shape=(batch_size, max_beziers)
+    return dmap_rewards
 
 
 def loss_function(control_points, num_beziers, probabilities, num_cp, im, loss_im, grid, actual_covariances,
          probabilistic_map_generator, map_type='pmap', distance='l2', gamma=0.9):
     if map_type == 'pmap':
-        cummulative_rewards = get_pmap_rewards(control_points, num_cp, num_beziers, im, loss_im,
+        rewards = get_pmap_rewards(control_points, num_cp, num_beziers, im, loss_im,
                                                actual_covariances, probabilistic_map_generator, gamma=gamma)
     else:
-        cummulative_rewards = get_dmap_rewards(control_points, num_cp, num_beziers, im, grid,
+        rewards = get_dmap_rewards(control_points, num_cp, num_beziers, im, grid,
                                                distance=distance, gamma=gamma)
 
-    model_loss = -cummulative_rewards[:, 0]
-    reinforcement_loss = -torch.sum(cummulative_rewards[:, 1:].detach() * torch.log(probabilities[:-1].permute(1, 0)), dim=-1)
+    # Calculamos los difference rewards y el cummulative_reward
+    difference_rewards = rewards
+    cummulative_reward = 0
+    for i in range(difference_rewards.shape[0]-1, 0, -1):
+        difference_rewards[i] -= difference_rewards[i-1]
+        cummulative_reward = gamma*cummulative_reward + difference_rewards[i]
+    cummulative_reward = gamma*cummulative_reward + difference_rewards[0]
+
+    model_loss = -cummulative_reward
+    reinforcement_loss = -torch.sum(difference_rewards.detach() * torch.log(probabilities), dim=0)
 
     return torch.mean(model_loss + reinforcement_loss)
 

@@ -38,7 +38,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir + "/graphics/ProbabilisticBezierEncoder/MultiBezierModels/FixedCP/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"loss"+str(loss_mode[0])+"_distance"+str(loss_mode[1])+"_exp"+str(num_experiment))
+        writer = SummaryWriter(basedir + "/graphics/ProbabilisticBezierEncoder/MultiBezierModels/FixedCP/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"loss"+str(loss_mode[0])+"_distance"+str(loss_mode[1])+"_secodApproach")
         counter = 0
 
     # Obtenemos las imagenes del dataset
@@ -69,7 +69,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     if loss_mode[0] == 'dmap':
         grid = torch.empty((1, 1, images.shape[2], images.shape[3], 2), dtype=torch.float32)
         loss_im = None
-        cp_covariances = None
+        actual_covariances = None
         probabilistic_map_generator = None
         for i in range(images.shape[2]):
             grid[0, 0, i, :, 0] = i
@@ -103,11 +103,11 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 loss_im = loss_im_training[i:i+batch_size]
 
             # Ejecutamos el modelo sobre el batch
-            control_points, num_beziers, probabilities = model(im)
+            control_points, probabilities = model(im)
 
             # Calculamos la loss
-            loss = loss_function(control_points, num_beziers, probabilities, model.num_cp, im, loss_im, grid, actual_covariances,
-                                 probabilistic_map_generator, map_type='pmap', distance='l2', gamma=0.9)
+            loss = loss_function(control_points, model.max_beziers+torch.zeros(batch_size, dtype=torch.long, device=control_points.device), probabilities, model.num_cp,
+                                 im, loss_im, grid, actual_covariances, probabilistic_map_generator, map_type='pmap', distance='l2', gamma=0.9)
             if debug:
                 cummulative_loss += loss
 
@@ -141,11 +141,11 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                     loss_im = loss_im_validation[j:j + batch_size]
 
                 # Ejecutamos el modelo sobre el batch
-                control_points, num_beziers, probabilities = model(im)
+                control_points, probabilities = model(im)
 
                 # Calculamos la loss
-                loss = loss_function(control_points, num_beziers, probabilities, model.num_cp, im, loss_im, grid,
-                                     actual_covariances, probabilistic_map_generator, map_type='pmap', distance='l2', gamma=0.9)
+                loss = loss_function(control_points, model.max_beziers+torch.zeros(batch_size, dtype=torch.long, device=control_points.device),
+                                     probabilities, model.num_cp, im, loss_im, grid, actual_covariances, probabilistic_map_generator, map_type='pmap', distance='l2', gamma=0.9)
                 cummulative_loss += loss
 
             # Aplicamos el learning rate scheduler
@@ -159,77 +159,78 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/MultiBezierModels/FixedCP/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"loss"+str(loss_mode[0])+"_distance"+str(loss_mode[1])+"_exp"+str(num_experiment))
+                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/MultiBezierModels/FixedCP/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"loss"+str(loss_mode[0])+"_distance"+str(loss_mode[1])+"_secondApproach")
             cummulative_loss = 0
 
             
             # Iniciamos la evaluación del modo "predicción"
-            iou_value = 0
-            chamfer_value = 0
+            if epoch > 60:
+                iou_value = 0
+                chamfer_value = 0
 
-            # Inicialmente, predeciremos 10 imagenes que almacenaremos en tensorboard
-            target_images = im_validation[0:200:20]
-            predicted_images = torch.zeros_like(target_images)
-            control_points, num_beziers, _ = model(target_images)
+                # Inicialmente, predeciremos 10 imagenes que almacenaremos en tensorboard
+                target_images = im_validation[0:200:20]
+                predicted_images = torch.zeros_like(target_images)
+                control_points, num_beziers = model.predict(target_images)
 
-            # Renderizamos las imagenes predichas
-            i = 0
-            not_finished = num_beziers > i
-            to_end = torch.sum(not_finished)
-            while to_end:
-                num_cps = model.num_cp * torch.ones_like(num_beziers[not_finished])
-                im_seq = bezier(control_points[model.num_cp*i: model.num_cp*(i+1), not_finished], num_cps, torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
-                im_seq = torch.round(im_seq).long()
-                k = 0
-                for j in range(10):
-                    if not_finished[j]:
-                        predicted_images[j, 0, im_seq[k, :, 0], im_seq[k, :, 1]] = 1
-                        k += 1
-                i += 1
+                # Renderizamos las imagenes predichas
+                i = 0
                 not_finished = num_beziers > i
                 to_end = torch.sum(not_finished)
+                while to_end:
+                    num_cps = model.num_cp * torch.ones_like(num_beziers[not_finished])
+                    im_seq = bezier(control_points[model.num_cp*i: model.num_cp*(i+1), not_finished], num_cps, torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
+                    im_seq = torch.round(im_seq).long()
+                    k = 0
+                    for j in range(10):
+                        if not_finished[j]:
+                            predicted_images[j, 0, im_seq[k, :, 0], im_seq[k, :, 1]] = 1
+                            k += 1
+                    i += 1
+                    not_finished = num_beziers > i
+                    to_end = torch.sum(not_finished)
 
-            # Guardamos estas primeras 10 imagenes en tensorboard
-            img_grid = torchvision.utils.make_grid(target_images)
-            writer.add_image('target_images', img_grid)
-            img_grid = torchvision.utils.make_grid(predicted_images)
-            writer.add_image('predicted_images', img_grid)
+                # Guardamos estas primeras 10 imagenes en tensorboard
+                img_grid = torchvision.utils.make_grid(target_images)
+                writer.add_image('target_images', img_grid)
+                img_grid = torchvision.utils.make_grid(predicted_images)
+                writer.add_image('predicted_images', img_grid)
 
-            # Calculamos metricas
-            iou_value += intersection_over_union(predicted_images, target_images)
-            chamfer_value += np.sum(chamfer_distance(predicted_images[:, 0].cpu().numpy(), target_images[:, 0].cpu().numpy()))
+                # Calculamos metricas
+                iou_value += intersection_over_union(predicted_images, target_images)
+                chamfer_value += np.sum(chamfer_distance(predicted_images[:, 0].cpu().numpy(), target_images[:, 0].cpu().numpy()))
 
 
-            # Finalmente, predecimos 490 imagenes mas para calcular IoU y chamfer_distance
-            target_images = im_validation[200:10000:20].cuda()
-            predicted_images = torch.zeros_like(target_images)
-            control_points, num_beziers, _ = model(target_images)
+                # Finalmente, predecimos 490 imagenes mas para calcular IoU y chamfer_distance
+                target_images = im_validation[200:10000:20].cuda()
+                predicted_images = torch.zeros_like(target_images)
+                control_points, num_beziers = model.predict(target_images)
 
-            # Renderizamos las imagenes predichas
-            i = 0
-            not_finished = num_beziers > i
-            to_end = torch.sum(not_finished)
-            while to_end:
-                num_cps = model.num_cp * torch.ones_like(num_beziers[not_finished])
-                im_seq = bezier(control_points[model.num_cp * i: model.num_cp * (i + 1), not_finished], num_cps,
-                                torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
-                im_seq = torch.round(im_seq).long()
-                k = 0
-                for j in range(490):
-                    if not_finished[j]:
-                        predicted_images[j, 0, im_seq[k, :, 0], im_seq[k, :, 1]] = 1
-                        k += 1
-                i += 1
+                # Renderizamos las imagenes predichas
+                i = 0
                 not_finished = num_beziers > i
                 to_end = torch.sum(not_finished)
+                while to_end:
+                    num_cps = model.num_cp * torch.ones_like(num_beziers[not_finished])
+                    im_seq = bezier(control_points[model.num_cp * i: model.num_cp * (i + 1), not_finished], num_cps,
+                                    torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
+                    im_seq = torch.round(im_seq).long()
+                    k = 0
+                    for j in range(490):
+                        if not_finished[j]:
+                            predicted_images[j, 0, im_seq[k, :, 0], im_seq[k, :, 1]] = 1
+                            k += 1
+                    i += 1
+                    not_finished = num_beziers > i
+                    to_end = torch.sum(not_finished)
 
-            # Calculamos metricas
-            iou_value += intersection_over_union(predicted_images, target_images)
-            chamfer_value += np.sum(chamfer_distance(predicted_images[:, 0].cpu().numpy(), target_images[:, 0].cpu().numpy()))
+                # Calculamos metricas
+                iou_value += intersection_over_union(predicted_images, target_images)
+                chamfer_value += np.sum(chamfer_distance(predicted_images[:, 0].cpu().numpy(), target_images[:, 0].cpu().numpy()))
 
-            # Guardamos los resultados en tensorboard
-            writer.add_scalar("Prediction/IoU", iou_value / 500, counter)
-            writer.add_scalar("Prediction/Chamfer_distance", chamfer_value / 500, counter)
+                # Guardamos los resultados en tensorboard
+                writer.add_scalar("Prediction/IoU", iou_value / 500, counter)
+                writer.add_scalar("Prediction/Chamfer_distance", chamfer_value / 500, counter)
 
         # Volvemos al modo train para la siguiente epoca
         model.train()
