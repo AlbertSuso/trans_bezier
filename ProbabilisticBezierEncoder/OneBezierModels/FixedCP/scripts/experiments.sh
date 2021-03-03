@@ -10,7 +10,7 @@ case $1 in
 		num_control_points="5"
 		num_transformer_layers="5"
 
-		loss_type="pmap"
+		loss_type="chamfer"
 		distance_type="quadratic"
 
 		cp_variance="25"

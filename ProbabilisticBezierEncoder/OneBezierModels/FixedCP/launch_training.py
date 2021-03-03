@@ -46,11 +46,11 @@ new_model = args.new_model if args.new_model is not None else True
 num_transformer_layers = args.num_transformer_layers if args.num_transformer_layers is not None else 5
 num_control_points = args.num_control_points if args.num_control_points is not None else 5
 
-batch_size = args.batch_size if args.batch_size is not None else 64
+batch_size = args.batch_size if args.batch_size is not None else 32
 num_epochs = args.num_epochs if args.num_epochs is not None else 200
 learning_rate = args.learning_rate if args.learning_rate is not None else 0.00005
 
-loss_type = args.loss_type if args.loss_type is not None else 'pmap'
+loss_type = args.loss_type if args.loss_type is not None else 'chamfer'
 distance_type = args.distance_type if args.distance_type is not None else 'l2'
 
 # predict_variance = args.predict_variance if args.predict_variance is not None else True

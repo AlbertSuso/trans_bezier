@@ -174,6 +174,7 @@ if __name__ == '__main__':
     map = map_maker(cp_means, num_cp*torch.ones(batch_size, dtype=torch.long, device='cpu'), cp_covariances, mode='p')
     print("Numero de pixeles pintados en la imagen", torch.sum(im[0, 0]))
     print("Numero de pixeles pintados en el mapa", torch.sum(map[0] > 0))
+    print("Suma de valores del mapa", torch.sum(map[0]))
     print(torch.max(map))
     print(map.shape)
 

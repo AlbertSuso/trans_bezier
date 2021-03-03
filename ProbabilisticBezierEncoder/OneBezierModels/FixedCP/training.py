@@ -6,9 +6,9 @@ import time
 from torch.utils.tensorboard import SummaryWriter
 from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.dataset_generation import bezier
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from Utils.chamfer_distance import chamfer_distance, generate_loss_images
+from Utils.chamfer_distance import chamfer_distance, generate_loss_images, generate_distance_images
 from Utils.probabilistic_map import ProbabilisticMap
-from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.losses import dmap_loss, pmap_loss
+from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.losses import dmap_loss, pmap_loss, chamfer_loss
 
 
 def intersection_over_union(predicted, target):
@@ -44,7 +44,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     # Obtenemos las imagenes del dataset
     images = dataset
 
-    assert loss_mode[0] in ['pmap', 'dmap']
+    assert loss_mode[0] in ['pmap', 'dmap', 'chamfer']
     assert loss_mode[1] in ['l2', 'quadratic', 'exp']
     # En caso de que la loss seleccionada sea la del mapa probabilístico, hacemos los preparativos necesarios
     if loss_mode[0] == 'pmap':
@@ -65,7 +65,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             model = model.cuda()
 
     # En caso de que la loss seleccionada sea la del mapa de distancias, hacemos los preparativos necesarios
-    if loss_mode[0] == 'dmap':
+    elif loss_mode[0] == 'dmap':
         grid = torch.empty((1, 1, images.shape[2], images.shape[3], 2), dtype=torch.float32)
         for i in range(images.shape[2]):
             grid[0, 0, i, :, 0] = i
@@ -75,6 +75,31 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             grid = grid.cuda()
             model = model.cuda()
 
+    elif loss_mode[0] == 'chamfer':
+        # Inicializamos el generador de mapas probabilisticos y la matriz de covariancias para el pmap
+        probabilistic_map_generator = ProbabilisticMap((model.image_size, model.image_size, 50))
+        cp_covariance = torch.tensor([[[1, 0], [0, 1]] for i in range(model.num_cp)], dtype=torch.float32)
+        cp_covariances = torch.empty((model.num_cp, batch_size, 2, 2))
+        for i in range(batch_size):
+            cp_covariances[:, i, :, :] = cp_covariance
+        # Iniciamos el grid para el dmap
+        grid = torch.empty((1, 1, images.shape[2], images.shape[3], 2), dtype=torch.float32)
+        for i in range(images.shape[2]):
+            grid[0, 0, i, :, 0] = i
+            grid[0, 0, :, i, 1] = i
+
+        # Obtenemos los mapas de distancia de las imagenes del dataset
+        distance_images = generate_distance_images(images, distance='l2')
+
+        if cuda:
+            images = images.cuda()
+            distance_images = distance_images.cuda()
+            grid = grid.cuda()
+            probabilistic_map_generator = probabilistic_map_generator.cuda()
+            cp_covariances = cp_covariances.cuda()
+            model = model.cuda()
+
+
     # Particionamos el dataset en training y validation
     # images.shape=(N, 1, 64, 64)
     im_training = images[:40000]
@@ -82,6 +107,9 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     if loss_mode[0] == 'pmap':
         loss_im_training = loss_images[:40000]
         loss_im_validation = loss_images[40000:]
+    if loss_mode[0] == 'chamfer':
+        dist_im_training = distance_images[:40000]
+        dist_im_validation = distance_images[40000:]
 
     # Definimos el optimizer
     optimizer = optimizer(model.parameters(), lr=lr)
@@ -107,6 +135,9 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 loss = pmap_loss(control_points, num_cps, actual_covariances, im, loss_im, probabilistic_map_generator, mode='p')
             elif loss_mode[0] == 'dmap':
                 loss = dmap_loss(control_points, num_cps, im, grid, distance=loss_mode[1])
+            elif loss_mode[0] == 'chamfer':
+                distance_im = dist_im_training[i:i+batch_size]
+                loss = chamfer_loss(control_points, num_cps, im, distance_im, cp_covariances, probabilistic_map_generator, grid)
             if debug:
                 cummulative_loss += loss
 
@@ -147,6 +178,9 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                                      probabilistic_map_generator, mode='p')
                 elif loss_mode[0] == 'dmap':
                     loss = dmap_loss(control_points, num_cps, im, grid, distance=loss_mode[1])
+                elif loss_mode[0] == 'chamfer':
+                    distance_im = dist_im_validation[j:j + batch_size]
+                    loss = chamfer_loss(control_points, num_cps, im, distance_im, cp_covariances, probabilistic_map_generator, grid)
                 cummulative_loss += loss
 
             # Aplicamos el learning rate scheduler
@@ -160,7 +194,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/loss"+str(loss_mode[0]+"_distance"+str(loss_mode[1])))
+                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/loss"+str(loss_mode[0])+"_distance"+str(loss_mode[1])+"_penalization"+str(penalization_coef))
             cummulative_loss = 0
 
             
