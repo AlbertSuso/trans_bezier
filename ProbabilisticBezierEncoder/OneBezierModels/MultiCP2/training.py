@@ -196,7 +196,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
             # Calculamos metricas
             iou_value += intersection_over_union(predicted_images, target_images)
-            chamfer_value += np.sum(chamfer_distance(predicted_images[:, 0].cpu().numpy(), target_images[:, 0].cpu().numpy()))
+            chamfer_value += np.sum(
+                chamfer_distance(predicted_images[:, 0].cpu().numpy(), target_images[:, 0].cpu().numpy()))
 
 
             # Finalmente, predecimos 490 imagenes mas para calcular IoU y chamfer_distance
@@ -222,7 +223,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 predicted_images[i, 0, im_seq[i, :, 0], im_seq[i, :, 1]] = 1
             # Calculamos metricas
             iou_value += intersection_over_union(predicted_images, target_images)
-            chamfer_value += np.sum(chamfer_distance(predicted_images[:, 0].cpu().numpy(), target_images[:, 0].cpu().numpy()))
+            chamfer_value += np.sum(
+                chamfer_distance(predicted_images[:, 0].cpu().numpy(), target_images[:, 0].cpu().numpy()))
 
             # Guardamos los resultados en tensorboard
             writer.add_scalar("Prediction/IoU", iou_value / 500, counter)

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from DeterministicBezierEncoder.OneBezierModels.FixedCP.transformer import Transformer
 from Utils.feature_extractor import ResNet18
 from DeterministicBezierEncoder.OneBezierModels.FixedCP.dataset_generation import bezier
-from Utils.chamfer_distance import chamfer_distance
+from Utils import chamfer_distance
 
 
 basedir = "/home/asuso/PycharmProjects/trans_bezier"

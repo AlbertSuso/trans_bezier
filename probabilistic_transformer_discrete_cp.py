@@ -3,7 +3,7 @@
 import torch
 import torch.nn as nn
 
-from Utils.feature_extractor import ResNet18
+from Utils import ResNet18
 from Utils.positional_encoder import PositionalEncoder
 
 

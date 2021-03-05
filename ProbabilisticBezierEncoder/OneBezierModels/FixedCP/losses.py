@@ -1,7 +1,7 @@
 import torch
-import matplotlib.pyplot as plt
 
 from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.dataset_generation import bezier
+
 
 def pmap_loss(control_points, num_cps, actual_covariances, im, loss_im, probabilistic_map_generator, mode='p'):
     batch_size = im.shape[0]
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     import torch
     import os
 
-    from Utils.chamfer_distance import chamfer_distance, generate_loss_images, generate_distance_images
+    from Utils.chamfer_distance import generate_distance_images
     from Utils.probabilistic_map import ProbabilisticMap
 
     basedir = "/home/asuso/PycharmProjects/trans_bezier"

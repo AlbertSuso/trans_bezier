@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from Utils.feature_extractor import ResNet18, NumCP_predictor12, NumCP_predictor18
+from Utils.feature_extractor import ResNet18, NumCP_predictor12
 from Utils.positional_encoder import PositionalEncoder
 
 
