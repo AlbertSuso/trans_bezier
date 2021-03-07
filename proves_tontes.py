@@ -11,6 +11,7 @@ from Utils.chamfer_distance import chamfer_distance, generate_loss_images, gener
 from Utils.probabilistic_map import ProbabilisticMap
 from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.training import step_decay
 from ProbabilisticBezierEncoder.OneBezierModels.FixedCP.dataset_generation import bezier
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 device = "cuda:0"
 # device = "cpu"
@@ -31,9 +32,8 @@ for i in range(images.shape[2]):
 
 model = Transformer(64, feature_extractor=ResNet18, num_transformer_layers=num_tl,
                     num_cp=num_cp, transformer_encoder=True).to(device)
-model.load_state_dict(torch.load(state_dict_basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/losschamfer_distancequadratic_penalization0.1"))
-# model.load_state_dict(torch.load(state_dict_basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/losspmap_distancel2"))
-optimizer = Adam(model.parameters(), lr=1e-5)
+#model.load_state_dict(torch.load(state_dict_basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/losschamfer_distancequadratic_penalization0.1"))
+#optimizer = Adam(model.parameters(), lr=1e-5)
 
 probabilistic_map_generator = ProbabilisticMap((model.image_size, model.image_size, 50)).to(device)
 cp_covariances = torch.tensor([ [[1, 0], [0, 1]] for i in range(model.num_cp)], dtype=torch.float32).to(device).unsqueeze(1)
@@ -44,8 +44,14 @@ num_samples = 1
 times = torch.empty(num_samples, dtype=torch.float32, device=device)
 best_chamfers = torch.empty(num_samples, dtype=torch.float32, device=device)
 best_chamfer_epochs = torch.empty(num_samples, dtype=torch.float32, device=device)
+losses = torch.empty((num_samples, 100), dtype=torch.float32, device=device)
 model.eval()
 for n in range(num_samples):
+    print("Sample", n)
+    model.load_state_dict(torch.load(state_dict_basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/losschamfer_distancequadratic_penalization0.1"))
+    # model.load_state_dict(torch.load(state_dict_basedir+"/state_dicts/ProbabilisticBezierEncoder/OneBezierModels/FixedCP/losspmap_distancel2"))
+    optimizer = Adam(model.parameters(), lr=1e-5)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=10 ** (-0.5), patience=4, min_lr=1e-10)
     im = images[idx+n].unsqueeze(0)
     loss_im = generate_loss_images(im, weight=5).to(device)
     dist_im = generate_distance_images(im).to(device)
@@ -56,7 +62,7 @@ for n in range(num_samples):
     best_chamfer_epoch = 0
     best_image = None
     t0 = time.time()
-    for i in range(60):
+    for i in range(100):
         #actual_covariances = cp_covariances * step_decay(25, i, 0.5, 6, 1).to(device)
 
         control_points, num_cps = model(im)
@@ -68,6 +74,7 @@ for n in range(num_samples):
         predicted_im[0, 0, im_seq[0, :, 0], im_seq[0, :, 1]] = 1
 
         chamfer_dist = chamfer_distance(predicted_im[0].cpu().numpy(), im[0].cpu().numpy())
+        # scheduler.step(chamfer_dist)
         if chamfer_dist < best_chamfer:
             # print("Epoch {} --> chamfer_distance={}".format(i+1, chamfer_dist))
             best_chamfer = chamfer_dist
@@ -90,6 +97,7 @@ for n in range(num_samples):
         loss.backward()
         optimizer.step()
         model.zero_grad()
+        losses[n, i] = loss.detach()
 
     times[n] = time.time()-t0
     best_chamfers[n] = best_chamfer[0]
@@ -116,3 +124,7 @@ print("El porcentaje de chamfer distances por debajo de 0.15 es", 100*torch.sum(
 print("El porcentaje de chamfer distances por debajo de 0.1 es", 100*torch.sum(best_chamfers < 0.1)/num_samples)
 print("El porcentaje de chamfer distances por debajo de 0.075 es", 100*torch.sum(best_chamfers < 0.075)/num_samples)
 print("El porcentaje de chamfer distances por debajo de 0.05 es", 100*torch.sum(best_chamfers < 0.05)/num_samples)
+
+mean_loss = torch.mean(losses, dim=0)
+plt.plot(mean_loss.cpu())
+plt.show()

@@ -111,7 +111,7 @@ def get_chamfer_rewards(control_points, num_cp, num_beziers, im, distance_im, co
         dmap, _ = torch.min(dmap, dim=1)
 
 
-        new_rewards = torch.sum(im[:, 0]*dmap/torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1)+pmap*distance_im[:, 0]/torch.sum(pmap, dim=(1, 2)).view(-1, 1, 1), dim=(1, 2))
+        new_rewards = -torch.sum(im[:, 0]*dmap/torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1)+pmap*distance_im[:, 0]/torch.sum(pmap, dim=(1, 2)).view(-1, 1, 1), dim=(1, 2))
         chamfer_rewards = torch.cat((chamfer_rewards, new_rewards.unsqueeze(0)), dim=0)
 
         i += 1
