@@ -160,7 +160,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
         model.eval()
         with torch.no_grad():
             cummulative_loss = 0
-            for j in range(0, len(im_validation) - batch_size + 1, batch_size):
+            for j in range(0, len(im_validation)-batch_size+1, batch_size):
                 # Obtenemos el batch
                 im = im_validation[j:j+batch_size].cuda()
                 if loss_mode[0] == 'pmap':
@@ -192,7 +192,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
             
             # Iniciamos la evaluación del modo "predicción"
-            if epoch > 60:
+            if epoch > -1:
                 iou_value = 0
                 chamfer_value = 0
 
@@ -247,7 +247,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                                     torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
                         im_seq = torch.round(im_seq).long()
                         k = 0
-                        for j in range(490):
+                        for j in range(70):
                             if not_finished[j]:
                                 predicted_images[j, 0, im_seq[k, :, 0], im_seq[k, :, 1]] = 1
                                 k += 1

@@ -155,17 +155,16 @@ class Transformer(nn.Module):
         # Tensor que guarda los indices de las secuencias que pertenecen a tokens BOS
         bos_idxs = torch.zeros(1, dtype=torch.long, device=image_input.device)
 
+        # Llamamos al agente RL para decidir qué samples siguen activas
+        output_decoder = self._rl_decoder(control_points[:, active_samples], bos_idxs, memory[:, active_samples])
+        output_decoder = output_decoder[-1]
+        step_probabilities = torch.sigmoid(self._rl_probability(output_decoder))
+        # Creamos una distribución de bernoulli con cada probabilidad y generemos un batch de samples
+        distribution = Bernoulli(step_probabilities)
+        new_active_samples = distribution.sample()
+        # Actualizamos las imagenes cuya recreación sigue activa usando el resultado del sampling
+        active_samples = active_samples[new_active_samples.bool().view(-1)]
         while active_samples.shape[0] > 0:
-            # Llamamos al agente RL para decidir qué samples siguen activas
-            output_decoder = self._rl_decoder(control_points[:, active_samples], bos_idxs, memory[:, active_samples])
-            output_decoder = output_decoder[-1]
-            step_probabilities = torch.sigmoid(self._rl_probability(output_decoder))
-            # Creamos una distribución de bernoulli con cada probabilidad y generemos un batch de samples
-            distribution = Bernoulli(step_probabilities)
-            new_active_samples = distribution.sample()
-            # Actualizamos las imagenes cuya recreación sigue activa usando el resultado del sampling
-            active_samples = active_samples[new_active_samples.bool().view(-1)]
-
             # Generamos self.num_cp puntos de control para las imagenes cuya recreación sigue activa (i.e generamos una nueva curva de bezier para estas imagenes)
             for n in range(self.num_cp):
                 # Ejecutamos el decoder para obtener un nuevo punto de control
@@ -181,6 +180,16 @@ class Transformer(nn.Module):
             bos_idxs = torch.cat((bos_idxs, torch.tensor([bos_idxs[-1]+1+self.num_cp], dtype=torch.long, device=bos_idxs.device)), dim=0)
             # Actualizamos el tensor num_beziers
             num_beziers[active_samples] += 1
+
+            # Llamamos al agente RL para decidir qué samples siguen activas
+            output_decoder = self._rl_decoder(control_points[:, active_samples], bos_idxs, memory[:, active_samples])
+            output_decoder = output_decoder[-1]
+            step_probabilities = torch.sigmoid(self._rl_probability(output_decoder))
+            # Creamos una distribución de bernoulli con cada probabilidad y generemos un batch de samples
+            distribution = Bernoulli(step_probabilities)
+            new_active_samples = distribution.sample()
+            # Actualizamos las imagenes cuya recreación sigue activa usando el resultado del sampling
+            active_samples = active_samples[new_active_samples.bool().view(-1)]
 
         # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size-0.5)x(0, im_size-0.5)
         control_points *= self.image_size - 0.5
