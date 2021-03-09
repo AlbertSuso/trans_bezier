@@ -60,6 +60,9 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
         grid = None
         distance_im = None
         if cuda:
+            images = images.cuda()
+            loss_images = loss_images.cuda()
+
             probabilistic_map_generator = probabilistic_map_generator.cuda()
             cp_covariances = cp_covariances.cuda()
             model = model.cuda()
@@ -75,6 +78,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
         actual_covariances = None
         probabilistic_map_generator = None
         if cuda:
+            images = images.cuda()
+
             grid = grid.cuda()
             model = model.cuda()
 
@@ -95,6 +100,9 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
         distance_images = generate_distance_images(images)
         loss_im = None
         if cuda:
+            images = images.cuda()
+            distance_images = distance_images.cuda()
+
             probabilistic_map_generator = probabilistic_map_generator.cuda()
             actual_covariances = actual_covariances.cuda()
             grid = grid.cuda()
@@ -122,11 +130,11 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             actual_covariances = cp_covariances * step_decay(cp_variance, epoch, var_drop, epochs_drop, min_variance).to(cp_covariances.device)
         for i in range(0, len(im_training)-batch_size+1, batch_size):
             # Obtenemos el batch
-            im = im_training[i:i+batch_size].cuda()
+            im = im_training[i:i+batch_size]#.cuda()
             if loss_mode[0] == 'pmap':
-                loss_im = loss_im_training[i:i+batch_size].cuda()
+                loss_im = loss_im_training[i:i+batch_size]#.cuda()
             if loss_mode[0] == 'chamfer':
-                distance_im = distance_im_training[i:i+batch_size].cuda()
+                distance_im = distance_im_training[i:i+batch_size]#.cuda()
 
             # Ejecutamos el modelo sobre el batch
             control_points, probabilities = model(im)
@@ -134,8 +142,6 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Calculamos la loss
             loss = loss_function(control_points, model.max_beziers+torch.zeros(batch_size, dtype=torch.long, device=control_points.device), probabilities, model.num_cp,
                                  im, distance_im, loss_im, grid, actual_covariances, probabilistic_map_generator, loss_type=loss_mode[0], distance='l2', gamma=0.9)
-            if debug:
-                cummulative_loss += loss
 
             # Realizamos backpropagation y un paso de descenso del gradiente
             loss.backward()
@@ -144,10 +150,12 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
             # Recopilación de datos para tensorboard
             k = int(40000/(batch_size*5))
-            if debug and i%k == k-1:
-                writer.add_scalar("Training/loss", cummulative_loss/k, counter)
-                counter += 1
-                cummulative_loss = 0
+            if debug:
+                cummulative_loss += loss.detach()
+                if i%k == k-1:
+                    writer.add_scalar("Training/loss", cummulative_loss/k, counter)
+                    counter += 1
+                    cummulative_loss = 0
 
 
         """
@@ -162,11 +170,11 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             cummulative_loss = 0
             for j in range(0, len(im_validation)-batch_size+1, batch_size):
                 # Obtenemos el batch
-                im = im_validation[j:j+batch_size].cuda()
+                im = im_validation[j:j+batch_size]#.cuda()
                 if loss_mode[0] == 'pmap':
-                    loss_im = loss_im_validation[j:j + batch_size].cuda()
+                    loss_im = loss_im_validation[j:j + batch_size]#.cuda()
                 if loss_mode[0] == 'chamfer':
-                    distance_im = distance_im_validation[j:j + batch_size].cuda()
+                    distance_im = distance_im_validation[j:j + batch_size]#.cuda()
 
                 # Ejecutamos el modelo sobre el batch
                 control_points, probabilities = model(im)
@@ -174,7 +182,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 # Calculamos la loss
                 loss = loss_function(control_points, model.max_beziers+torch.zeros(batch_size, dtype=torch.long, device=control_points.device),
                                      probabilities, model.num_cp, im, distance_im, loss_im, grid, actual_covariances, probabilistic_map_generator, loss_type=loss_mode[0], distance='l2', gamma=0.9)
-                cummulative_loss += loss
+                cummulative_loss += loss.detach()
 
             # Aplicamos el learning rate scheduler
             scheduler.step(cummulative_loss)

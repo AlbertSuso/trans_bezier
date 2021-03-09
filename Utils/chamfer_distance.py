@@ -13,7 +13,6 @@ def chamfer_distance(prediction, target):
         # Check images have something
         if img1.all() or not img1.any() or img2.all() or not img2.any():
             distance.append(diag)
-            print("Esto pasa: imagen vacia")
             continue
 
         edges1 = 255*img1
