@@ -92,7 +92,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
         for i in range(batch_size):
             actual_covariances[:, i, :, :] = cp_covariance
         # Obtenemos el grid
-        grid = torch.empty((1, 1, images.shape[2], images.shape[3], 2), dtype=torch.float32)
+        grid = torch.empty((1, 1, images.shape[2], images.shape[2], 2), dtype=torch.float32)
         for i in range(images.shape[2]):
             grid[0, 0, i, :, 0] = i
             grid[0, 0, :, i, 1] = i
@@ -140,7 +140,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             control_points, probabilities = model(im)
 
             # Calculamos la loss
-            loss = loss_function(control_points, model.max_beziers+torch.zeros(batch_size, dtype=torch.long, device=control_points.device), probabilities, model.num_cp,
+            loss = loss_function(epoch, control_points, model.max_beziers+torch.zeros(batch_size, dtype=torch.long, device=control_points.device), probabilities, model.num_cp,
                                  im, distance_im, loss_im, grid, actual_covariances, probabilistic_map_generator, loss_type=loss_mode[0], distance='l2', gamma=0.9)
 
             # Realizamos backpropagation y un paso de descenso del gradiente
@@ -180,7 +180,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 control_points, probabilities = model(im)
 
                 # Calculamos la loss
-                loss = loss_function(control_points, model.max_beziers+torch.zeros(batch_size, dtype=torch.long, device=control_points.device),
+                loss = loss_function(epoch, control_points, model.max_beziers+torch.zeros(batch_size, dtype=torch.long, device=control_points.device),
                                      probabilities, model.num_cp, im, distance_im, loss_im, grid, actual_covariances, probabilistic_map_generator, loss_type=loss_mode[0], distance='l2', gamma=0.9)
                 cummulative_loss += loss.detach()
 
@@ -200,7 +200,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
             
             # Iniciamos la evaluación del modo "predicción"
-            if epoch > -1:
+            if epoch > 60:
                 iou_value = 0
                 chamfer_value = 0
 

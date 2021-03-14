@@ -87,9 +87,9 @@ def get_chamfer_rewards(control_points, num_cp, num_beziers, im, distance_im, co
     """
     batch_size = im.shape[0]
 
-    probability_map = torch.empty((0, batch_size, 64, 64), device=im.device)
-    pred_seq = torch.empty((batch_size, 0, 1, 1, 2), device=im.device)
-    chamfer_rewards = torch.empty((0, batch_size), device=im.device)
+    probability_map = torch.empty((0, batch_size, 64, 64), dtype=torch.float32, device=im.device)
+    pred_seq = torch.empty((batch_size, 0, 1, 1, 2), dtype=torch.float32, device=im.device)
+    chamfer_rewards = torch.empty((0, batch_size), dtype=torch.float32, device=im.device)
 
     i = 0
     not_finished = num_beziers > i
@@ -122,7 +122,7 @@ def get_chamfer_rewards(control_points, num_cp, num_beziers, im, distance_im, co
 
 
 
-def loss_function(control_points, num_beziers, probabilities, num_cp, im, distance_im, loss_im, grid, actual_covariances,
+def loss_function(epoch, control_points, num_beziers, probabilities, num_cp, im, distance_im, loss_im, grid, actual_covariances,
          probabilistic_map_generator, loss_type='pmap', distance='l2', gamma=0.9):
     if loss_type == 'pmap':
         rewards = get_pmap_rewards(control_points, num_cp, num_beziers, im, loss_im, actual_covariances, probabilistic_map_generator)
@@ -134,14 +134,17 @@ def loss_function(control_points, num_beziers, probabilities, num_cp, im, distan
     # Calculamos los difference rewards y el cummulative_reward
     difference_rewards = rewards
     cummulative_reward = 0
+
     for i in range(difference_rewards.shape[0]-1, 0, -1):
-        difference_rewards[i] -= difference_rewards[i-1]
+        difference_rewards[i] = difference_rewards[i] - difference_rewards[i-1]
         cummulative_reward = gamma*cummulative_reward + difference_rewards[i]
     cummulative_reward = gamma*cummulative_reward + difference_rewards[0]
 
     model_loss = -cummulative_reward
-    reinforcement_loss = -torch.sum(difference_rewards.detach() * torch.log(probabilities), dim=0)
+    if epoch <= 50:
+        return torch.mean(model_loss)
 
+    reinforcement_loss = -torch.sum(difference_rewards.detach() * torch.log(probabilities), dim=0)
     return torch.mean(model_loss + reinforcement_loss)
 
 

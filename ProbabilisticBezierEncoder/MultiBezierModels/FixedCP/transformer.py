@@ -121,7 +121,7 @@ class Transformer(nn.Module):
             # Llamamos al agente RL para generar las probabilidades de seguir con la generación de curvas de bezier
             output_decoder = self._rl_decoder(control_points, bos_idxs[:i+1], memory)
             output_decoder = output_decoder[-1]
-            step_probabilities = torch.sigmoid(self._rl_probability(output_decoder))
+            step_probabilities = 1e-8 + (1-2e-8)*torch.sigmoid(self._rl_probability(output_decoder))
             probabilities = torch.cat((probabilities, step_probabilities.permute(1, 0)), dim=0)
 
             # Generamos self.num_cp puntos de control (1 curva de Bezier)
@@ -158,7 +158,7 @@ class Transformer(nn.Module):
         # Llamamos al agente RL para decidir qué samples siguen activas
         output_decoder = self._rl_decoder(control_points[:, active_samples], bos_idxs, memory[:, active_samples])
         output_decoder = output_decoder[-1]
-        step_probabilities = torch.sigmoid(self._rl_probability(output_decoder))
+        step_probabilities = 1e-8 + (1-2e-8)*torch.sigmoid(self._rl_probability(output_decoder))
         # Creamos una distribución de bernoulli con cada probabilidad y generemos un batch de samples
         distribution = Bernoulli(step_probabilities)
         new_active_samples = distribution.sample()
@@ -184,7 +184,7 @@ class Transformer(nn.Module):
             # Llamamos al agente RL para decidir qué samples siguen activas
             output_decoder = self._rl_decoder(control_points[:, active_samples], bos_idxs, memory[:, active_samples])
             output_decoder = output_decoder[-1]
-            step_probabilities = torch.sigmoid(self._rl_probability(output_decoder))
+            step_probabilities = 1e-8 + (1-2e-8)*torch.sigmoid(self._rl_probability(output_decoder))
             # Creamos una distribución de bernoulli con cada probabilidad y generemos un batch de samples
             distribution = Bernoulli(step_probabilities)
             new_active_samples = distribution.sample()
