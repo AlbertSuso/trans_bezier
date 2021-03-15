@@ -198,6 +198,23 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/MultiBezierModels/FixedCP/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"loss"+str(loss_mode[0]))
             cummulative_loss = 0
 
+
+            # Representación grafica del modo forward
+            forwarded_images = torch.zeros_like(target_images)
+            forwarded_cp, _ = model(target_images)
+
+            # Renderizamos las imagenes forward
+            for i in range(model.max_beziers):
+                num_cps = model.num_cp * torch.ones(10, dtype=torch.long, device=forwarded_cp.device)
+                im_seq = bezier(forwarded_cp[model.num_cp * i: model.num_cp * (i + 1)], num_cps,
+                                torch.linspace(0, 1, 150, device=control_points.device).unsqueeze(0), device='cuda')
+                im_seq = torch.round(im_seq).long()
+                for j in range(10):
+                    forwarded_images[j, 0, im_seq[j, :, 0], im_seq[j, :, 1]] = 1
+
+            img_grid = torchvision.utils.make_grid(forwarded_images)
+            writer.add_image('forwarded_images', img_grid)
+
             
             # Iniciamos la evaluación del modo "predicción"
             if epoch > 60:
