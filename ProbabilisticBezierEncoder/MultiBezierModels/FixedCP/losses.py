@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 from ProbabilisticBezierEncoder.MultiBezierModels.FixedCP.dataset_generation import bezier
 
@@ -124,6 +125,7 @@ def get_chamfer_rewards(control_points, num_cp, num_beziers, im, distance_im, co
 
 def loss_function(epoch, control_points, num_beziers, probabilities, num_cp, im, distance_im, loss_im, grid, actual_covariances,
          probabilistic_map_generator, loss_type='pmap', distance='l2', gamma=0.9):
+    im_size = im.shape[-1]
     if loss_type == 'pmap':
         rewards = get_pmap_rewards(control_points, num_cp, num_beziers, im, loss_im, actual_covariances, probabilistic_map_generator)
     elif loss_type == 'dmap':
@@ -138,6 +140,7 @@ def loss_function(epoch, control_points, num_beziers, probabilities, num_cp, im,
     for i in range(difference_rewards.shape[0]-1, 0, -1):
         difference_rewards[i] = difference_rewards[i] - difference_rewards[i-1]
         cummulative_reward = gamma*cummulative_reward + difference_rewards[i]
+    difference_rewards[0] = difference_rewards[0] + np.sqrt(2*im_size*im_size)
     cummulative_reward = gamma*cummulative_reward + difference_rewards[0]
 
     model_loss = -cummulative_reward
