@@ -36,6 +36,9 @@ class TransformerEncoder(nn.Module):
         self._embedder = feature_extractor
         self.d_model = self._embedder.d_model
 
+        # Positional Encoder
+        self._positional_encoder = PositionalEncoder(self.d_model)
+
         # encoder_layer with d_model, nhead, dim_feedforward (implementado tal cual en el paper)
         encoder_layer = nn.TransformerEncoderLayer(self.d_model, 8, 4*self.d_model)
         self._encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers) # 4 capes
@@ -44,9 +47,8 @@ class TransformerEncoder(nn.Module):
     def forward(self, image):
         #image.shape = (batch_size, 1, 64, 64)
         features = self._embedder(image)
-        #features.shape = (batch_size, num_feature_maps=d_model, X, X)
-        #features = features.view(image.shape[0], self._embedder.d_model, -1).transpose(1, 2).transpose(0, 1)
         #features.shape = (seq_len, batch_size, d_model)
+        features = self._positional_encoder(features)
         return self._encoder(features)
         #return.shape = (seq_len, batch_size, d_model)
 
@@ -113,7 +115,7 @@ class Transformer(nn.Module):
             control_points = torch.cat((control_points, cp), dim=0)
 
         # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size-0.5)x(0, im_size-0.5)
-        control_points *= self.image_size-0.5
+        control_points = (self.image_size-0.5)*control_points
 
         # Calculamos el tensor num_cps (POR IMPLEMENTAR PARA MultiCP !!!!!!!!!!!!!!!!)
         num_cps = self.num_cp*torch.ones(batch_size, dtype=torch.long, device=image_input.device)

@@ -46,15 +46,6 @@ def chamfer_loss(control_points, num_cps, im, distance_im, covariance, probabili
 
     return torch.sum(im[:, 0]*dmap/torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1)+pmap*distance_im[:, 0]/torch.sum(pmap, dim=(1, 2)).view(-1, 1, 1))/batch_size
 
-    """LO QUE HAY DESPUES DE ESTO SE TIENE QUE ELIMINAR
-    im_seq = torch.round(pred_seq).long()
-    predicted_im = torch.zeros_like(im)
-    for i in range(batch_size):
-        predicted_im[i, 0, im_seq[i, :, 0, 0, 0], im_seq[i, :, 0, 0, 1]] = 1
-    true_chamfer = torch.sum(im[:, 0]*dmap/torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1) + predicted_im[:, 0]*distance_im[:, 0]/torch.sum(predicted_im[:, 0], dim=(1, 2)).view(-1, 1, 1)) / batch_size
-
-    return true_chamfer, torch.sum(im[:, 0]*dmap/torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1) + pmap*distance_im[:, 0]/torch.sum(pmap, dim=(1, 2)).view(-1, 1, 1)) / batch_size"""
-
 
 if __name__ == '__main__':
     import torch

@@ -8,11 +8,11 @@ from ProbabilisticBezierEncoder.MultiBezierModels.ParallelVersion.training impor
 from Utils.feature_extractor import ResNet18
 
 
-dataset_basedir = "/data2fast/users/asuso"
-# dataset_basedir = "/home/asuso/PycharmProjects/trans_bezier"
+# dataset_basedir = "/data2fast/users/asuso"
+dataset_basedir = "/home/asuso/PycharmProjects/trans_bezier"
 
-state_dict_basedir = "/data1slow/users/asuso/trans_bezier"
-# state_dict_basedir = "/home/asuso/PycharmProjects/trans_bezier"
+# state_dict_basedir = "/data1slow/users/asuso/trans_bezier"
+state_dict_basedir = "/home/asuso/PycharmProjects/trans_bezier"
 
 """SELECTION OF HYPERPARAMETERS"""
 
@@ -38,7 +38,7 @@ num_transformer_layers = args.num_transformer_layers if args.num_transformer_lay
 num_control_points = args.num_control_points if args.num_control_points is not None else 3
 max_beziers = args.max_beziers if args.max_beziers is not None else 2
 
-batch_size = args.batch_size if args.batch_size is not None else 31
+batch_size = args.batch_size if args.batch_size is not None else 7
 num_epochs = args.num_epochs if args.num_epochs is not None else 200
 learning_rate = args.learning_rate if args.learning_rate is not None else 0.00005
 

@@ -192,7 +192,7 @@ class Transformer(nn.Module):
             active_samples = active_samples[new_active_samples.bool().view(-1)]
 
         # Una vez predichos todos los puntos de control, los pasamos al dominio (0, im_size-0.5)x(0, im_size-0.5)
-        control_points *= self.image_size - 0.5
+        control_points = (self.image_size - 0.5)*control_points
 
         return control_points, num_beziers
         # control_points.shape=(num_cp*num_beziers_maxSample, batch_size, 2)

@@ -200,6 +200,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
 
             # Representación grafica del modo forward
+            target_images = im_validation[0:200:20].cuda()
             forwarded_images = torch.zeros_like(target_images)
             forwarded_cp, _ = model(target_images)
 
