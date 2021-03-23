@@ -5,7 +5,7 @@ import torch
 from scipy.special import binom
 from torch.utils.data import Dataset
 
-# Bueno, ya estamos en marcha
+# Bueno, ya estamos en march
 
 class OneBezierDataset(Dataset):
     def __init__(self, basedir="/home/asuso/PycharmProjects/transformer_bezier/Datasets", training=True):

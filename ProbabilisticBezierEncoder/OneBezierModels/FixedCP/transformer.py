@@ -36,9 +36,6 @@ class TransformerEncoder(nn.Module):
         self._embedder = feature_extractor
         self.d_model = self._embedder.d_model
 
-        # Positional Encoder
-        self._positional_encoder = PositionalEncoder(self.d_model)
-
         # encoder_layer with d_model, nhead, dim_feedforward (implementado tal cual en el paper)
         encoder_layer = nn.TransformerEncoderLayer(self.d_model, 8, 4*self.d_model)
         self._encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers) # 4 capes
@@ -48,7 +45,6 @@ class TransformerEncoder(nn.Module):
         #image.shape = (batch_size, 1, 64, 64)
         features = self._embedder(image)
         #features.shape = (seq_len, batch_size, d_model)
-        features = self._positional_encoder(features)
         return self._encoder(features)
         #return.shape = (seq_len, batch_size, d_model)
 
