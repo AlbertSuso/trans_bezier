@@ -149,7 +149,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             model.zero_grad()
 
             # Recopilación de datos para tensorboard
-            k = int(40000/(batch_size*5))
+            k = int(int(40000/(batch_size*5))*batch_size + 1)
             if debug:
                 cummulative_loss += loss.detach()
                 if i%k == k-1:

@@ -94,7 +94,7 @@ if __name__ == '__main__':
     basedir = "/home/asuso/PycharmProjects/trans_bezier"
 
     t0 = time.time()
-    max_beziers = 2
+    max_beziers = 5
     for num_cp in [3]:
         im_size = 64
         im = generate1bezier(im_size=im_size, batch_size=50000, max_beziers=max_beziers, num_control_points=num_cp, device='cuda')

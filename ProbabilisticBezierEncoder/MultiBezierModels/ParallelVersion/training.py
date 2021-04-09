@@ -1,7 +1,9 @@
 import torch
 import torchvision
 import numpy as np
+import matplotlib.pyplot as plt
 import time
+import copy
 
 from torch.utils.tensorboard import SummaryWriter
 from ProbabilisticBezierEncoder.MultiBezierModels.FixedCP.dataset_generation import bezier
@@ -19,7 +21,7 @@ def step_decay(original_cp_variance, epoch, var_drop=0.5, epochs_drop=5, min_var
         return torch.tensor([original_cp_variance])
     return max(torch.tensor([min_var]), original_cp_variance * (var_drop ** torch.floor(torch.tensor([(epoch-epochs_drop) / epochs_drop]))))
 
-def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer, num_experiment, lr=1e-4, cuda=True, debug=True):
+def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer, num_experiment, lr=1e-4, curv_pen_coef=0.01, cuda=True, debug=True):
     # torch.autograd.set_detect_anomaly(True)
     print("\n\nTHE TRAINING BEGINS")
     print("MultiBezier Experiment #{} ---> num_cp={} max_beziers={} batch_size={} num_epochs={} learning_rate={}".format(
@@ -86,14 +88,14 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             control_points = model(im)
 
             # Calculamos la loss
-            loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid)
+            loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid, curv_pen_coef=curv_pen_coef)
             # Realizamos backpropagation y un paso de descenso del gradiente
             loss.backward()
             optimizer.step()
             model.zero_grad()
 
             # Recopilación de datos para tensorboard
-            k = int(40000/(batch_size*5))
+            k = int(int(40000/(batch_size*5))*batch_size + 1)
             if debug:
                 cummulative_loss += loss.detach()
                 if i%k == k-1:
@@ -121,7 +123,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 control_points = model(im)
 
                 # Calculamos la loss
-                loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid)
+                loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid, curv_pen_coef=curv_pen_coef)
                 cummulative_loss += loss.detach()
 
             # Aplicamos el learning rate scheduler

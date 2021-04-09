@@ -2,13 +2,16 @@ import torch
 import numpy as np
 
 from ProbabilisticBezierEncoder.MultiBezierModels.FixedCP.dataset_generation import bezier
+from Utils.curvature_penalization import curvature, acceleration_curvature
 
-def loss_function(control_points, im, distance_im, covariance, probabilistic_map_generator, grid):
+def loss_function(control_points, im, distance_im, covariance, probabilistic_map_generator, grid, curv_pen_coef= 0.01):
     batch_size = control_points.shape[2]
     num_cp = control_points.shape[1]
 
     probability_map = torch.empty((0, batch_size, 64, 64), dtype=torch.float32, device=control_points.device)
     pred_seq = torch.empty((batch_size, 0, 1, 1, 2), dtype=torch.float32, device=control_points.device)
+
+    curvature_penalizations = torch.empty(batch_size, 0)
 
     num_cps = num_cp*torch.ones(batch_size, dtype=torch.long, device=control_points.device)
 
@@ -22,13 +25,20 @@ def loss_function(control_points, im, distance_im, covariance, probabilistic_map
                                   torch.linspace(0, 1, 150, device=num_cps.device).unsqueeze(0), device=num_cps.device)
         pred_seq = torch.cat((pred_seq, partial_pred_seq.unsqueeze(-2).unsqueeze(-2)), dim=1)
 
+        # Calculamos la curvatura media o máxima de las curvas predichas y la almacenamos
+        new_curvatures = curvature(partial_pred_seq, mode='max')
+        curvature_penalizations = torch.cat((curvature_penalizations, new_curvatures))
+
     # Calculamos los mapas probabilisticos y de distancias del conjunto de curvas
     pmap, _ = torch.max(probability_map, dim=0)
     dmap = torch.sqrt(torch.sum((grid - pred_seq) ** 2, dim=-1))
     dmap, _ = torch.min(dmap, dim=1)
 
+    # Calculamos la penalización por curvatura
+    curvature_penalizations = torch.mean(curvature_penalizations)
+
     # Calculamos y retornamos las fake chamfer_distance
-    return torch.sum(im[:, 0]*dmap/torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1)+pmap*distance_im[:, 0]/torch.sum(pmap, dim=(1, 2)).view(-1, 1, 1))/batch_size
+    return torch.sum(im[:, 0]*dmap/torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1)+pmap*distance_im[:, 0]/torch.sum(pmap, dim=(1, 2)).view(-1, 1, 1))/batch_size + curv_pen_coef*curvature_penalizations
 
 
 

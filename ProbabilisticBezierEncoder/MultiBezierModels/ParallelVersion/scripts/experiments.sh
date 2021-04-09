@@ -11,6 +11,8 @@ case $1 in
 		num_transformer_layers="6"
 		max_beziers="2"
 
+		curv_pen_coef="0.01"
+
 		new_model="True"
 		;;
 	1)
@@ -21,6 +23,8 @@ case $1 in
 		num_control_points="3"
 		num_transformer_layers="6"
 		max_beziers="2"
+
+		curv_pen_coef="0.01"
 
 		new_model="True"
 		;;
@@ -33,6 +37,8 @@ case $1 in
 		num_transformer_layers="5"
 		max_beziers="2"
 
+		curv_pen_coef="0.01"
+
 		new_model="True"
 		;;
 	3)
@@ -43,6 +49,8 @@ case $1 in
 		num_control_points="3"
 		num_transformer_layers="5"
 		max_beziers="2"
+
+		curv_pen_coef="0.01"
 
 		new_model="True"
 		;;
