@@ -1,9 +1,7 @@
 import torch
 import torchvision
 import numpy as np
-import matplotlib.pyplot as plt
 import time
-import copy
 
 from torch.utils.tensorboard import SummaryWriter
 from ProbabilisticBezierEncoder.MultiBezierModels.FixedCP.dataset_generation import bezier
@@ -38,7 +36,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir + "/graphics/ProbabilisticBezierEncoder/MultiBezierModels/ParallelVersion/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers))
+        writer = SummaryWriter(basedir + "/graphics/ProbabilisticBezierEncoder/MultiBezierModels/ParallelVersion/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"_curvatureCoef"+str(curv_pen_coef))
         counter = 0
 
     # Obtenemos las imagenes del dataset
@@ -95,7 +93,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             model.zero_grad()
 
             # Recopilación de datos para tensorboard
-            k = int(int(40000/(batch_size*5))*batch_size + 1)
+            k = int(int(im_training.shape[0]/(batch_size*5))*batch_size + 1)
             if debug:
                 cummulative_loss += loss.detach()
                 if i%k == k-1:
@@ -137,7 +135,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/MultiBezierModels/ParallelVersion/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers))
+                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/MultiBezierModels/ParallelVersion/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"_curvatureCoef"+str(curv_pen_coef))
             cummulative_loss = 0
 
             

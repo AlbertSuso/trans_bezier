@@ -28,6 +28,7 @@ def bezier(CP, num_cps, t, device='cuda'):
 
     Returns tensor of shape=(batch_size, resolution, 2) containing the "resolution" points belonging to the "batch_size" bezier curves evaluated in "t".
     """
+
     # Calculation of all the binomial coefficients needed for the computation of bezier curves
     binomial_coefs = torch.zeros_like(CP[:, :, 0])
     for i, num_cp in enumerate(num_cps):

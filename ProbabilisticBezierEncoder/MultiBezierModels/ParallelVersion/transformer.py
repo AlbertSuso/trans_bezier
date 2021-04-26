@@ -80,4 +80,4 @@ class Transformer(nn.Module):
         control_points = (self.image_size-0.5)*control_points
 
         return control_points.view(self.max_beziers, batch_size, self.num_cp, 2).permute(0, 2, 1, 3)
-        # control_points.shape=(num_beziers, num_cp, batch_size, 2)
+        # control_points.shape=(num_beziers, batch_size, num_cp, 2)

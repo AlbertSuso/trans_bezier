@@ -4,10 +4,11 @@ def curvature(seq, mode='max'):
     """
     seq.shape=(batch_size, seq_len, 2)
     """
-    second_derivatives = seq[:, 2:] - 2*seq[:, 1:-1] + seq[:, -2]
+    second_derivatives = seq[:, 2:] - 2*seq[:, 1:-1] + seq[:, :-2]
     curvatures = torch.sum(second_derivatives*second_derivatives, dim=-1)
     if mode == 'max':
-        return torch.max(curvatures, dim=-1)
+        max_curv, _ = torch.max(curvatures, dim=-1)
+        return max_curv
     return torch.mean(curvatures, dim=-1)
 
 def acceleration_curvature(seq, mode='max'):
