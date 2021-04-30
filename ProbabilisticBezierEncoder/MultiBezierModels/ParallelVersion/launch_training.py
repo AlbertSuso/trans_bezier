@@ -29,6 +29,9 @@ parser.add_argument('-e', '--num_epochs', type=int)
 parser.add_argument('-lr', '--learning_rate', type=float)
 
 parser.add_argument('-cpc', '--curv_pen_coef', type=float)
+parser.add_argument('-rc', '--rep_coef', type=float)
+parser.add_argument('-dt', '--dist_thresh', type=float)
+parser.add_argument('-st', '--second_term', type=bool)
 
 
 args = parser.parse_args()
@@ -45,6 +48,9 @@ num_epochs = args.num_epochs if args.num_epochs is not None else 200
 learning_rate = args.learning_rate if args.learning_rate is not None else 0.00005
 
 curv_pen_coef = args.curv_pen_coef if args.curv_pen_coef is not None else 0.01
+rep_coef = args.rep_coef if args.rep_coef is not None else 0.1
+dist_thresh = args.dist_thresh if args.dist_thresh is not None else 4.5
+second_term = args.second_term if args.second_term is not None else True
 
 """LOADING DATASET"""
 # images = torch.load(os.path.join(dataset_basedir, "Datasets/MNIST/thinned_relocated"))
@@ -62,6 +68,7 @@ if not new_model:
 """SELECT OPTIMIZATOR AND RUN TRAINING"""
 optimizer = Adam
 
-train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer, num_experiment, lr=learning_rate, curv_pen_coef=curv_pen_coef, cuda=True, debug=True)
+train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer, num_experiment, lr=learning_rate, curv_pen_coef=curv_pen_coef,
+                             rep_coef=rep_coef, dist_thresh=dist_thresh, second_term=second_term, cuda=True, debug=True)
 
 print("FINISHED TRAINING WITH EXIT")

@@ -19,7 +19,8 @@ def step_decay(original_cp_variance, epoch, var_drop=0.5, epochs_drop=5, min_var
         return torch.tensor([original_cp_variance])
     return max(torch.tensor([min_var]), original_cp_variance * (var_drop ** torch.floor(torch.tensor([(epoch-epochs_drop) / epochs_drop]))))
 
-def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer, num_experiment, lr=1e-4, curv_pen_coef=0.01, cuda=True, debug=True):
+def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer, num_experiment, lr=1e-4,
+                                 rep_coef=0.1, dist_thresh=4.5, second_term=True, cuda=True, debug=True):
     # torch.autograd.set_detect_anomaly(True)
     print("\n\nTHE TRAINING BEGINS")
     print("MultiBezier Experiment #{} ---> num_cp={} max_beziers={} batch_size={} num_epochs={} learning_rate={}".format(
@@ -86,7 +87,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             control_points = model(im)
 
             # Calculamos la loss
-            loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid, curv_pen_coef=curv_pen_coef)
+            loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid,
+                                 repulsion_coef=rep_coef, dist_thresh=dist_thresh, second_term=second_term)
             # Realizamos backpropagation y un paso de descenso del gradiente
             loss.backward()
             optimizer.step()
@@ -121,7 +123,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
                 control_points = model(im)
 
                 # Calculamos la loss
-                loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid, curv_pen_coef=curv_pen_coef)
+                loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid,
+                                     repulsion_coef=rep_coef, dist_thresh=dist_thresh, second_term=second_term)
                 cummulative_loss += loss.detach()
 
             # Aplicamos el learning rate scheduler
