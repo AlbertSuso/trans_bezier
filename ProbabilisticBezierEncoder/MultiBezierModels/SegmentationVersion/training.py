@@ -1,5 +1,6 @@
 import torch
 import torchvision
+import cv2
 import numpy as np
 import time
 
@@ -20,7 +21,7 @@ def step_decay(original_cp_variance, epoch, var_drop=0.5, epochs_drop=5, min_var
     return max(torch.tensor([min_var]), original_cp_variance * (var_drop ** torch.floor(torch.tensor([(epoch-epochs_drop) / epochs_drop]))))
 
 def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer, num_experiment, lr=1e-4,
-                                 rep_coef=0.1, dist_thresh=4.5, second_term=True, cuda=True, debug=True):
+                                cuda=True, debug=True):
     # torch.autograd.set_detect_anomaly(True)
     print("\n\nTHE TRAINING BEGINS")
     print("MultiBezier Experiment #{} ---> num_cp={} max_beziers={} batch_size={} num_epochs={} learning_rate={}".format(
@@ -37,11 +38,21 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir + "/graphics/ProbabilisticBezierEncoder/MultiBezierModels/ParallelVersion/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"_repCoef"+str(rep_coef)+"_distThresh"+str(dist_thresh)+"_secondTerm"+str(second_term))
+        writer = SummaryWriter(basedir + "/graphics/ProbabilisticBezierEncoder/MultiBezierModels/ParallelVersion/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers))
         counter = 0
 
     # Obtenemos las imagenes del dataset
     images = dataset
+
+    # Realizamos la segmentacion
+    segmented_images = torch.zeros((0, 1, images.shape[-2], images.shape[-1]), dtype=images.dtype, device=images.device)
+    for n, im in enumerate(images):
+        num_labels, labels_im = cv2.connectedComponents(im.numpy().astype(np.uint8))
+        new_segmented_images = torch.zeros((num_labels - 1, 1, images.shape[-2], images.shape[-1]), dtype=images.dtype,
+                                           device=images.device)
+        for i in range(1, num_labels):
+            new_segmented_images[i - 1, 0][labels_im == i] = 1
+        segmented_images = torch.cat((segmented_images, new_segmented_images), dim=0)
 
     # Inicializamos el generador de mapas probabilisticos y la matriz de covariancias
     probabilistic_map_generator = ProbabilisticMap((model.image_size, model.image_size, 50))
@@ -55,9 +66,9 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
         grid[0, 0, i, :, 0] = i
         grid[0, 0, :, i, 1] = i
     # Obtenemos las distance_images
-    distance_images = generate_distance_images(images)
+    distance_images = generate_distance_images(segmented_images)
     if cuda:
-        images = images.cuda()
+        segmented_images = segmented_images.cuda()
         distance_images = distance_images.cuda()
         probabilistic_map_generator = probabilistic_map_generator.cuda()
         covariances = covariances.cuda()
@@ -66,10 +77,13 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
     # Particionamos el dataset en training y validation
     # images.shape=(N, 1, 64, 64)
-    im_training = images[:40000]
-    im_validation = images[40000:]
-    distance_im_training = distance_images[:40000]
-    distance_im_validation = distance_images[40000:]
+    dataset_len = segmented_images.shape[0]
+    train_size = int(dataset_len*0.8)
+    im_training = segmented_images[:train_size]
+    im_validation = segmented_images[train_size:]
+    distance_im_training = distance_images[:train_size]
+    distance_im_validation = distance_images[train_size:]
+    orig_im_validation = images[int(images.shape[0]*0.9):]
 
     # Definimos el optimizer
     optimizer = optimizer(model.parameters(), lr=lr)
@@ -87,8 +101,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             control_points = model(im)
 
             # Calculamos la loss
-            loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid,
-                                 repulsion_coef=rep_coef, dist_thresh=dist_thresh, second_term=second_term)
+            loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid)
             # Realizamos backpropagation y un paso de descenso del gradiente
             loss.backward()
             optimizer.step()
@@ -116,15 +129,14 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             cummulative_loss = 0
             for j in range(0, len(im_validation)-batch_size+1, batch_size):
                 # Obtenemos el batch
-                im = im_validation[j:j+batch_size]#.cuda()
+                im = images[j:j+batch_size]#.cuda()
                 distance_im = distance_im_validation[j:j + batch_size]#.cuda()
 
                 # Ejecutamos el modelo sobre el batch
                 control_points = model(im)
 
                 # Calculamos la loss
-                loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid,
-                                     repulsion_coef=rep_coef, dist_thresh=dist_thresh, second_term=second_term)
+                loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid)
                 cummulative_loss += loss.detach()
 
             # Aplicamos el learning rate scheduler
@@ -138,7 +150,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/MultiBezierModels/ParallelVersion/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"_repCoef"+str(rep_coef)+"_distThresh"+str(dist_thresh)+"_secondTerm"+str(second_term))
+                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/MultiBezierModels/ParallelVersion/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"_repCoef")
             cummulative_loss = 0
 
             
@@ -147,18 +159,8 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             chamfer_value = 0
 
             # Inicialmente, predeciremos 10 imagenes que almacenaremos en tensorboard
-            target_images = im_validation[0:200:20]#.cuda()
-            predicted_images = torch.zeros_like(target_images)
-            control_points = model(target_images)
-
-            # Renderizamos las imagenes predichas
-            for bezier_cp in control_points:
-                # Calculamos la secuencia de puntos de esta curva
-                num_cps = model.num_cp * torch.ones(10, dtype=torch.long, device=bezier_cp.device)
-                im_seq = bezier(bezier_cp, num_cps, torch.linspace(0, 1, 150, device=num_cps.device).unsqueeze(0), device=num_cps.device)
-                im_seq = torch.round(im_seq).long()
-                for j in range(10):
-                    predicted_images[j, 0, im_seq[j, :, 0], im_seq[j, :, 1]] = 1
+            target_images = orig_im_validation[0:100:10]#.cuda()
+            predicted_images = model.predict(target_images)
 
             # Guardamos estas primeras 10 imagenes en tensorboard
             img_grid = torchvision.utils.make_grid(target_images)
@@ -172,21 +174,10 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
 
             # Finalmente, predecimos 490 imagenes mas para calcular IoU y chamfer_distance
-            idxs = [200, 1600, 3000, 4400, 5800, 7200, 8600, 10000]
+            idxs = [100, 800, 1500, 2200, 2900, 3600, 4300, 5000]
             for i in range(7):
-                target_images = im_validation[idxs[i]:idxs[i+1]:20]#.cuda()
-                predicted_images = torch.zeros_like(target_images)
-                control_points = model(target_images)
-
-                # Renderizamos las imagenes predichas
-                for bezier_cp in control_points:
-                    # Calculamos la secuencia de puntos de esta curva
-                    num_cps = model.num_cp * torch.ones(70, dtype=torch.long, device=bezier_cp.device)
-                    im_seq = bezier(bezier_cp, num_cps, torch.linspace(0, 1, 150, device=num_cps.device).unsqueeze(0),
-                                    device=num_cps.device)
-                    im_seq = torch.round(im_seq).long()
-                    for j in range(70):
-                        predicted_images[j, 0, im_seq[j, :, 0], im_seq[j, :, 1]] = 1
+                target_images = im_validation[idxs[i]:idxs[i+1]:10]#.cuda()
+                predicted_images = model(target_images)
 
                 # Calculamos metricas
                 iou_value += intersection_over_union(predicted_images, target_images)

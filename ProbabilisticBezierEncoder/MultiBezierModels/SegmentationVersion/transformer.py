@@ -1,7 +1,10 @@
 import torch
+import cv2
 import torch.nn as nn
+import numpy as np
 
 from Utils.feature_extractor import ResNet18
+from ProbabilisticBezierEncoder.MultiBezierModels.FixedCP.dataset_generation import bezier
 from Utils.positional_encoder import PositionalEncoder
 
 
@@ -81,3 +84,45 @@ class Transformer(nn.Module):
 
         return control_points.view(self.max_beziers, batch_size, self.num_cp, 2).permute(0, 2, 1, 3)
         # control_points.shape=(num_beziers, num_cp, batch_size, 2)
+
+
+    def predict(self, image_input):
+        """
+        image_input.shape = (bs, 1, H, W)
+        """
+        # Segmentamos las imagenes, poniendo cada componente conexa en una imagen individual
+        im_size = image_input.shape[-1]
+        batch_size = image_input.shape[0]
+        segmented_images = torch.zeros((0, 1, im_size, im_size), dtype=image_input.dtype, device=image_input.device)
+        num_components = torch.zeros(batch_size, dtype=torch.long, device=image_input.device)
+        for n, im in enumerate(image_input):
+            num_labels, labels_im = cv2.connectedComponents(im.numpy().astype(np.uint8))
+            num_components[n] = num_labels-1
+            new_segmented_images = torch.zeros((num_labels-1, 1, im_size, im_size), dtype=image_input.dtype, device=image_input.device)
+            for i in range(1, num_labels):
+                new_segmented_images[i-1, 0][labels_im == i] = 1
+            segmented_images = torch.cat((segmented_images, new_segmented_images), dim=0)
+
+        # Aplicamos la red para obtener los puntos de control que generan cada componente conexa
+        control_points = self(segmented_images)
+
+        # Renderizamos cada componenete conexa
+        connected_components = torch.zeros_like(segmented_images)
+        num_cps = self.num_cp * torch.ones(batch_size, dtype=torch.long, device=control_points.device)
+        for bezier_cp in control_points:
+            im_seq = bezier(bezier_cp, num_cps,
+                                      torch.linspace(0, 1, 150, device=num_cps.device).unsqueeze(0),
+                                      device=num_cps.device)
+            im_seq = torch.round(im_seq).long()
+            for j in range(connected_components.shape[0]):
+                connected_components[j, 0, im_seq[j, :, 0], im_seq[j, :, 1]] = 1
+
+        # Ensamblamos las componentes conexas que pertenecen a la misma imagen
+        predicted_images = torch.zeros_like(image_input)
+        last_nonprocessed = 0
+        for i in range(batch_size):
+            n = num_components[i]
+            predicted_images[i], _ = torch.max(connected_components[last_nonprocessed:last_nonprocessed+n], dim=0)
+            last_nonprocessed += n
+
+        return predicted_images

@@ -3,9 +3,9 @@ import numpy as np
 
 from ProbabilisticBezierEncoder.MultiBezierModels.FixedCP.dataset_generation import bezier
 from Utils.curvature_penalization import curvature, acceleration_curvature
-from Utils.repulsion import repulsion
+# from Utils.repulsion import repulsion
 
-def loss_function(control_points, im, distance_im, covariance, probabilistic_map_generator, grid, repulsion_coef=0.1, dist_thresh=4.5, second_term=True):
+def loss_function(control_points, im, distance_im, covariance, probabilistic_map_generator, grid):
     batch_size = control_points.shape[2]
     num_cp = control_points.shape[1]
 
@@ -39,13 +39,8 @@ def loss_function(control_points, im, distance_im, covariance, probabilistic_map
     #curvature_penalizations = torch.mean(curvature_penalizations)
 
     # Calculamos la fake chamfer_distance
-    facke_chamfer = torch.sum(im[:, 0]*dmap/torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1)+pmap*distance_im[:, 0]/torch.sum(pmap, dim=(1, 2)).view(-1, 1, 1))/batch_size #+ curv_pen_coef*curvature_penalizations
-
-    repulsion_penalty = 0
-    if repulsion_coef > 0:
-        repulsion_penalty = repulsion(control_points, dist_thresh=dist_thresh, second_term=second_term)
-
-    return facke_chamfer + repulsion_coef*repulsion_penalty
+    fake_chamfer = torch.sum(im[:, 0]*dmap/torch.sum(im[:, 0], dim=(1, 2)).view(-1, 1, 1)+pmap*distance_im[:, 0]/torch.sum(pmap, dim=(1, 2)).view(-1, 1, 1))/batch_size #+ curv_pen_coef*curvature_penalizations
+    return fake_chamfer
 
 
 
