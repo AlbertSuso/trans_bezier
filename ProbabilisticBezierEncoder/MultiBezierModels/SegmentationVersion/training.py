@@ -9,7 +9,7 @@ from ProbabilisticBezierEncoder.MultiBezierModels.FixedCP.dataset_generation imp
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from Utils.chamfer_distance import chamfer_distance, generate_distance_images
 from Utils.probabilistic_map import ProbabilisticMap
-from ProbabilisticBezierEncoder.MultiBezierModels.ParallelVersion.losses import loss_function
+from ProbabilisticBezierEncoder.MultiBezierModels.SegmentationVersion.losses import loss_function
 
 
 def intersection_over_union(predicted, target):
@@ -38,21 +38,27 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir + "/graphics/ProbabilisticBezierEncoder/MultiBezierModels/ParallelVersion/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers))
+        writer = SummaryWriter(basedir + "/graphics/ProbabilisticBezierEncoder/MultiBezierModels/SegmentationVersion/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers))
         counter = 0
 
     # Obtenemos las imagenes del dataset
     images = dataset
 
     # Realizamos la segmentacion
-    segmented_images = torch.zeros((0, 1, images.shape[-2], images.shape[-1]), dtype=images.dtype, device=images.device)
+    # segmented_images = torch.zeros((0, 1, images.shape[-2], images.shape[-1]), dtype=images.dtype, device=images.device)
+    connected_components_per_image = 4
+    segmented_images = torch.zeros((connected_components_per_image*images.shape[0], 1, images.shape[-2], images.shape[-1]), dtype=images.dtype, device=images.device)
+    num_images = 0
     for n, im in enumerate(images):
-        num_labels, labels_im = cv2.connectedComponents(im.numpy().astype(np.uint8))
+        num_labels, labels_im = cv2.connectedComponents(im[0].numpy().astype(np.uint8))
         new_segmented_images = torch.zeros((num_labels - 1, 1, images.shape[-2], images.shape[-1]), dtype=images.dtype,
                                            device=images.device)
         for i in range(1, num_labels):
             new_segmented_images[i - 1, 0][labels_im == i] = 1
-        segmented_images = torch.cat((segmented_images, new_segmented_images), dim=0)
+        #segmented_images = torch.cat((segmented_images, new_segmented_images), dim=0)
+        segmented_images[num_images:num_images+num_labels-1] = new_segmented_images
+        num_images += num_labels-1
+    segmented_images = segmented_images[:num_images]
 
     # Inicializamos el generador de mapas probabilisticos y la matriz de covariancias
     probabilistic_map_generator = ProbabilisticMap((model.image_size, model.image_size, 50))
@@ -150,7 +156,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             if cummulative_loss < best_loss:
                 print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/MultiBezierModels/ParallelVersion/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"_repCoef")
+                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/MultiBezierModels/SegmentationVersion/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"_repCoef")
             cummulative_loss = 0
 
             
@@ -177,7 +183,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             idxs = [100, 800, 1500, 2200, 2900, 3600, 4300, 5000]
             for i in range(7):
                 target_images = im_validation[idxs[i]:idxs[i+1]:10]#.cuda()
-                predicted_images = model(target_images)
+                predicted_images = model.predict(target_images)
 
                 # Calculamos metricas
                 iou_value += intersection_over_union(predicted_images, target_images)
