@@ -8,7 +8,7 @@ from ProbabilisticBezierEncoder.MultiBezierModels.FixedCP.dataset_generation imp
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from Utils.chamfer_distance import chamfer_distance, generate_distance_images
 from Utils.probabilistic_map import ProbabilisticMap
-from ProbabilisticBezierEncoder.MultiBezierModels.ParallelVersion.losses import loss_function
+from ProbabilisticBezierEncoder.MultiBezierModels.ParallelVersion.losses import loss_function, new_loss
 
 
 def intersection_over_union(predicted, target):
@@ -20,7 +20,7 @@ def step_decay(original_cp_variance, epoch, var_drop=0.5, epochs_drop=5, min_var
     return max(torch.tensor([min_var]), original_cp_variance * (var_drop ** torch.floor(torch.tensor([(epoch-epochs_drop) / epochs_drop]))))
 
 def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer, num_experiment, lr=1e-4,
-                                 rep_coef=0.1, dist_thresh=4.5, second_term=True, cuda=True, debug=True):
+                                 loss_type='probabilistic', dataset_name="MNIST", cuda=True, debug=True): # rep_coef=0.1, dist_thresh=4.5, second_term=True
     # torch.autograd.set_detect_anomaly(True)
     print("\n\nTHE TRAINING BEGINS")
     print("MultiBezier Experiment #{} ---> num_cp={} max_beziers={} batch_size={} num_epochs={} learning_rate={}".format(
@@ -34,42 +34,65 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
     # Inicializamos el writer de tensorboard, y las variables que usaremos para
     # la recopilación de datos.
-    cummulative_loss = 0
     if debug:
         # Tensorboard writter
-        writer = SummaryWriter(basedir + "/graphics/ProbabilisticBezierEncoder/MultiBezierModels/ParallelVersion/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"_repCoef"+str(rep_coef)+"_distThresh"+str(dist_thresh)+"_secondTerm"+str(second_term))
+        writer = SummaryWriter(basedir + "/graphics/ProbabilisticBezierEncoder/MultiBezierModels/ParallelVersion/"+str(dataset_name)+"_"+str(loss_type)+"_"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers))
         counter = 0
 
     # Obtenemos las imagenes del dataset
     images = dataset
 
-    # Inicializamos el generador de mapas probabilisticos y la matriz de covariancias
-    probabilistic_map_generator = ProbabilisticMap((model.image_size, model.image_size, 50))
-    cp_covariance = torch.tensor([ [[1, 0], [0, 1]] for i in range(model.num_cp)], dtype=torch.float32)
-    covariances = torch.empty((model.num_cp, batch_size, 2, 2))
-    for i in range(batch_size):
-        covariances[:, i, :, :] = cp_covariance
+    if loss_type == "probabilistic":
+        # Inicializamos el generador de mapas probabilisticos y la matriz de covariancias
+        probabilistic_map_generator = ProbabilisticMap((model.image_size, model.image_size, 50))
+        cp_covariance = torch.tensor([ [[1, 0], [0, 1]] for i in range(model.num_cp)], dtype=torch.float32)
+        covariances = torch.empty((model.num_cp, batch_size, 2, 2))
+        for i in range(batch_size):
+            covariances[:, i, :, :] = cp_covariance
+        # Obtenemos las distance_images
+        distance_images = generate_distance_images(images)
+
+        if cuda:
+            distance_images = distance_images.cuda()
+            probabilistic_map_generator = probabilistic_map_generator.cuda()
+            covariances = covariances.cuda()
+
+        distance_im_training = distance_images[:int(0.83*images.shape[0])]
+        distance_im_validation = distance_images[int(0.83*images.shape[0]):]
+
+    else:
+        # Obtenemos la groundtruth_seq del dataset (bs, max_N, 2)
+        im_size = images.shape[-1]
+        groundtruth_sequences = torch.empty((images.shape[0], im_size*im_size, 2), dtype=torch.long)
+        max_coords = 0
+        for i, im in enumerate(images):
+            new_coords = torch.nonzero(im[0])
+            groundtruth_sequences[i, :new_coords.shape[0]] = new_coords
+            if new_coords.shape[0] > max_coords:
+                max_coords = new_coords.shape[0]
+        groundtruth_sequences = groundtruth_sequences[:, :max_coords]
+
+        if cuda:
+            groundtruth_sequences = groundtruth_sequences.cuda()
+
+        groundtruth_seq_training = groundtruth_sequences[:int(0.83*images.shape[0])]
+        groundtruth_seq_validation = groundtruth_sequences[int(0.83*images.shape[0]):]
+
     # Obtenemos el grid
     grid = torch.empty((1, 1, images.shape[2], images.shape[2], 2), dtype=torch.float32)
     for i in range(images.shape[2]):
         grid[0, 0, i, :, 0] = i
         grid[0, 0, :, i, 1] = i
-    # Obtenemos las distance_images
-    distance_images = generate_distance_images(images)
+
     if cuda:
         images = images.cuda()
-        distance_images = distance_images.cuda()
-        probabilistic_map_generator = probabilistic_map_generator.cuda()
-        covariances = covariances.cuda()
         grid = grid.cuda()
         model = model.cuda()
 
     # Particionamos el dataset en training y validation
     # images.shape=(N, 1, 64, 64)
-    im_training = images[:40000]
-    im_validation = images[40000:]
-    distance_im_training = distance_images[:40000]
-    distance_im_validation = distance_images[40000:]
+    im_training = images[:int(0.83*images.shape[0])]
+    im_validation = images[int(0.83*images.shape[0]):]
 
     # Definimos el optimizer
     optimizer = optimizer(model.parameters(), lr=lr)
@@ -78,30 +101,33 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
     for epoch in range(num_epochs):
         t0 = time.time()
         print("Beginning epoch number", epoch+1)
+        cummulative_loss = 0
         for i in range(0, len(im_training)-batch_size+1, batch_size):
             # Obtenemos el batch
             im = im_training[i:i+batch_size]#.cuda()
-            distance_im = distance_im_training[i:i+batch_size]#.cuda()
 
             # Ejecutamos el modelo sobre el batch
             control_points = model(im)
 
-            # Calculamos la loss
-            loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid,
-                                 repulsion_coef=rep_coef, dist_thresh=dist_thresh, second_term=second_term)
+            if loss_type == "probabilistic":
+                distance_im = distance_im_training[i:i + batch_size]  # .cuda()
+                # Calculamos la loss
+                loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid)#repulsion_coef=rep_coef, dist_thresh=dist_thresh, second_term=second_term
+            else:
+                groundtruth_seq = groundtruth_seq_training[i:i+batch_size]
+                loss = new_loss(control_points, im, groundtruth_seq, grid)
+
             # Realizamos backpropagation y un paso de descenso del gradiente
             loss.backward()
             optimizer.step()
             model.zero_grad()
 
-            # Recopilación de datos para tensorboard
-            k = int(int(im_training.shape[0]/(batch_size*5))*batch_size + 1)
             if debug:
                 cummulative_loss += loss.detach()
-                if i%k == k-1:
-                    writer.add_scalar("Training/loss", cummulative_loss/k, counter)
-                    counter += 1
-                    cummulative_loss = 0
+
+
+        if debug:
+            writer.add_scalar("Training/loss", cummulative_loss/(i/batch_size), counter)
 
 
         """
@@ -116,15 +142,19 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             cummulative_loss = 0
             for j in range(0, len(im_validation)-batch_size+1, batch_size):
                 # Obtenemos el batch
-                im = im_validation[j:j+batch_size]#.cuda()
-                distance_im = distance_im_validation[j:j + batch_size]#.cuda()
+                im = im_validation[i:i + batch_size]  # .cuda()
 
                 # Ejecutamos el modelo sobre el batch
                 control_points = model(im)
 
-                # Calculamos la loss
-                loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator, grid,
-                                     repulsion_coef=rep_coef, dist_thresh=dist_thresh, second_term=second_term)
+                if loss_type == "probabilistic":
+                    distance_im = distance_im_validation[j:j + batch_size]  # .cuda()
+                    # Calculamos la loss
+                    loss = loss_function(control_points, im, distance_im, covariances, probabilistic_map_generator,
+                                         grid)  # repulsion_coef=rep_coef, dist_thresh=dist_thresh, second_term=second_term
+                else:
+                    groundtruth_seq = groundtruth_seq_validation[j:j + batch_size]
+                    loss = new_loss(control_points, im, groundtruth_seq, grid)
                 cummulative_loss += loss.detach()
 
             # Aplicamos el learning rate scheduler
@@ -132,14 +162,13 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
 
             # Recopilamos los datos para tensorboard
             if debug:
-                writer.add_scalar("Validation/loss", cummulative_loss/(j/batch_size+1), counter)
+                writer.add_scalar("Validation/loss", cummulative_loss/j, counter)
 
             # Si la loss obtenida es la mas baja hasta ahora, nos guardamos los pesos del modelo
             if cummulative_loss < best_loss:
-                print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/(j/batch_size+1)))
+                print("El modelo ha mejorado!! Nueva loss={}".format(cummulative_loss/j))
                 best_loss = cummulative_loss
-                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/MultiBezierModels/ParallelVersion/"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers)+"_repCoef"+str(rep_coef)+"_distThresh"+str(dist_thresh)+"_secondTerm"+str(second_term))
-            cummulative_loss = 0
+                torch.save(model.state_dict(), basedir+"/state_dicts/ProbabilisticBezierEncoder/MultiBezierModels/ParallelVersion/"+str(dataset_name)+"_"+str(loss_type)+"_"+str(model.num_cp)+"CP_maxBeziers"+str(model.max_beziers))
 
             
             # Iniciamos la evaluación del modo "predicción"

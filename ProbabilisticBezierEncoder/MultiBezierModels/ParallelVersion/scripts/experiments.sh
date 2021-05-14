@@ -11,9 +11,8 @@ case $1 in
 		num_transformer_layers="6"
 		max_beziers="2"
 
-		rep_coef="0.2"
-    dist_thresh="4.5"
-    second_term="True"
+		loss_type="probabilisticChamfer"
+		dataset_name="MNIST"
 
 		new_model="True"
 		;;
@@ -26,9 +25,8 @@ case $1 in
 		num_transformer_layers="6"
 		max_beziers="2"
 
-		rep_coef="0.1"
-    dist_thresh="4.5"
-    second_term="True"
+		loss_type="authenticChamfer"
+		dataset_name="quickdraw"
 
 		new_model="True"
 		;;
@@ -41,9 +39,8 @@ case $1 in
 		num_transformer_layers="5"
 		max_beziers="2"
 
-		rep_coef="0.05"
-    dist_thresh="4.5"
-    second_term="True"
+		loss_type="probabilistic"
+		dataset_name="MNIST"
 
 		new_model="True"
 		;;
@@ -56,9 +53,8 @@ case $1 in
 		num_transformer_layers="5"
 		max_beziers="2"
 
-		rep_coef="0.01"
-    dist_thresh="4.5"
-    second_term="True"
+		loss_type="probabilistic"
+		dataset_name="MNIST"
 
 		new_model="True"
 		;;

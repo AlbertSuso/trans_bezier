@@ -96,7 +96,7 @@ class Transformer(nn.Module):
         segmented_images = torch.zeros((0, 1, im_size, im_size), dtype=image_input.dtype, device=image_input.device)
         num_components = torch.zeros(batch_size, dtype=torch.long, device=image_input.device)
         for n, im in enumerate(image_input):
-            num_labels, labels_im = cv2.connectedComponents(im.numpy().astype(np.uint8))
+            num_labels, labels_im = cv2.connectedComponents(im[0].numpy().astype(np.uint8))
             num_components[n] = num_labels-1
             new_segmented_images = torch.zeros((num_labels-1, 1, im_size, im_size), dtype=image_input.dtype, device=image_input.device)
             for i in range(1, num_labels):
@@ -104,11 +104,11 @@ class Transformer(nn.Module):
             segmented_images = torch.cat((segmented_images, new_segmented_images), dim=0)
 
         # Aplicamos la red para obtener los puntos de control que generan cada componente conexa
-        control_points = self(segmented_images)
+        control_points = self(segmented_images.cuda())
 
         # Renderizamos cada componenete conexa
         connected_components = torch.zeros_like(segmented_images)
-        num_cps = self.num_cp * torch.ones(batch_size, dtype=torch.long, device=control_points.device)
+        num_cps = self.num_cp * torch.ones(control_points.shape[2], dtype=torch.long, device=control_points.device)
         for bezier_cp in control_points:
             im_seq = bezier(bezier_cp, num_cps,
                                       torch.linspace(0, 1, 150, device=num_cps.device).unsqueeze(0),

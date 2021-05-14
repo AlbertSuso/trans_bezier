@@ -128,4 +128,4 @@ class ResNet18(nn.Module):
         x = self.block5(x)
         # Input 2x2x256
         x = self.block6(x, maxpool=False)
-        return  x.view(input.shape[0], self.d_model, -1).permute(2, 0, 1) #La pasamos a la shape adecuada que necesita la transformer # MIRAR PERMUTE!!!
+        return x.view(input.shape[0], self.d_model, -1).permute(2, 0, 1) #La pasamos a la shape adecuada que necesita la transformer # MIRAR PERMUTE!!!

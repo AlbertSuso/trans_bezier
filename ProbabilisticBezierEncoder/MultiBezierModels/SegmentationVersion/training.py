@@ -135,7 +135,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             cummulative_loss = 0
             for j in range(0, len(im_validation)-batch_size+1, batch_size):
                 # Obtenemos el batch
-                im = images[j:j+batch_size]#.cuda()
+                im = im_validation[j:j+batch_size]#.cuda()
                 distance_im = distance_im_validation[j:j + batch_size]#.cuda()
 
                 # Ejecutamos el modelo sobre el batch
@@ -165,7 +165,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             chamfer_value = 0
 
             # Inicialmente, predeciremos 10 imagenes que almacenaremos en tensorboard
-            target_images = orig_im_validation[0:100:10]#.cuda()
+            target_images = orig_im_validation[0:100:10]
             predicted_images = model.predict(target_images)
 
             # Guardamos estas primeras 10 imagenes en tensorboard
@@ -182,7 +182,7 @@ def train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimiz
             # Finalmente, predecimos 490 imagenes mas para calcular IoU y chamfer_distance
             idxs = [100, 800, 1500, 2200, 2900, 3600, 4300, 5000]
             for i in range(7):
-                target_images = im_validation[idxs[i]:idxs[i+1]:10]#.cuda()
+                target_images = orig_im_validation[idxs[i]:idxs[i+1]:10]
                 predicted_images = model.predict(target_images)
 
                 # Calculamos metricas

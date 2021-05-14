@@ -45,7 +45,7 @@ set -- $1
 
 #################
 # Prepare the experiment to run
-CODE="python -u main.py --num_experiment $1 --new_model $new_model --num_transformer_layers $num_transformer_layers --num_control_points $num_control_points --max_beziers $max_beziers --batch_size $batch_size --num_epochs $num_epochs --learning_rate $learning_rate --rep_coef $rep_coef --dist_thresh $dist_thresh --second_term $second_term"
+CODE="python -u main.py --num_experiment $1 --new_model $new_model --num_transformer_layers $num_transformer_layers --num_control_points $num_control_points --max_beziers $max_beziers --batch_size $batch_size --num_epochs $num_epochs --learning_rate $learning_rate --loss_type $loss_type --dataset_name $dataset_name"
 
 #################
 # Prepare the experiment to run

@@ -28,10 +28,13 @@ parser.add_argument('-bs', '--batch_size', type=int)
 parser.add_argument('-e', '--num_epochs', type=int)
 parser.add_argument('-lr', '--learning_rate', type=float)
 
-parser.add_argument('-cpc', '--curv_pen_coef', type=float)
-parser.add_argument('-rc', '--rep_coef', type=float)
-parser.add_argument('-dt', '--dist_thresh', type=float)
-parser.add_argument('-st', '--second_term', type=bool)
+parser.add_argument('-lt', '--loss_type', type=str)
+parser.add_argument('-dn', '--dataset_name', type=str)
+
+#parser.add_argument('-cpc', '--curv_pen_coef', type=float)
+#parser.add_argument('-rc', '--rep_coef', type=float)
+#parser.add_argument('-dt', '--dist_thresh', type=float)
+#parser.add_argument('-st', '--second_term', type=bool)
 
 
 args = parser.parse_args()
@@ -47,14 +50,20 @@ batch_size = args.batch_size if args.batch_size is not None else 16
 num_epochs = args.num_epochs if args.num_epochs is not None else 200
 learning_rate = args.learning_rate if args.learning_rate is not None else 0.00005
 
-curv_pen_coef = args.curv_pen_coef if args.curv_pen_coef is not None else 0.01
-rep_coef = args.rep_coef if args.rep_coef is not None else 0.1
-dist_thresh = args.dist_thresh if args.dist_thresh is not None else 4.5
-second_term = args.second_term if args.second_term is not None else True
+loss_type = args.loss_type if args.loss_type is not None else "probabilistic"
+dataset_name = args.dataset_name if args.dataset_name is not None else "MNIST"
+
+#curv_pen_coef = args.curv_pen_coef if args.curv_pen_coef is not None else 0.01
+#rep_coef = args.rep_coef if args.rep_coef is not None else 0.1
+#dist_thresh = args.dist_thresh if args.dist_thresh is not None else 4.5
+#second_term = args.second_term if args.second_term is not None else True
 
 """LOADING DATASET"""
-# images = torch.load(os.path.join(dataset_basedir, "Datasets/MNIST/thinned_relocated"))
-images = torch.load(os.path.join(dataset_basedir, "Datasets/MultiBezierDatasets/Training/images/fixedCP"+str(num_control_points)+"_maxBeziers"+str(max_beziers)+"imSize64"))
+if dataset_name == "MNIST":
+    images = torch.load(os.path.join(dataset_basedir, "Datasets/MNIST/thinned_relocated"))
+else:
+    images = torch.load(os.path.join(dataset_basedir, "Datasets/QuickDraw/quickdraw_simple"))
+# images = torch.load(os.path.join(dataset_basedir, "Datasets/MultiBezierDatasets/Training/images/fixedCP"+str(num_control_points)+"_maxBeziers"+str(max_beziers)+"imSize64"))
 # sequences = torch.load(os.path.join(dataset_basedir, "Datasets/OneBezierDatasets/Training/sequences/fixedCP"+str(num_control_points)))
 dataset = images
 
@@ -69,6 +78,6 @@ if not new_model:
 optimizer = Adam
 
 train_one_bezier_transformer(model, dataset, batch_size, num_epochs, optimizer, num_experiment, lr=learning_rate,
-                             rep_coef=rep_coef, dist_thresh=dist_thresh, second_term=second_term, cuda=True, debug=True)
+                             loss_type=loss_type, dataset_name=dataset_name, cuda=True, debug=True)#rep_coef=rep_coef, dist_thresh=dist_thresh, second_term=second_term
 
 print("FINISHED TRAINING WITH EXIT")
